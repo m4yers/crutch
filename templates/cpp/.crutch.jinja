@@ -4,11 +4,9 @@ name = {{ user }}
 [project]
 type = {{ project_type }}
 name = {{ project_name }}
-generator = {{ project_generator }}
 
-[sdk]
-cmake = cmake
-
-[dir]
-build = ./_build
-install = ./_install
+[cpp]
+generator = {{ cpp_generator }}
+cmake = {{ cpp_cmake }}
+build = {{ cpp_build }}
+install = {{ cpp_install }}
