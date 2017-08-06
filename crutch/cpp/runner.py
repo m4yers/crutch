@@ -26,20 +26,24 @@ import os
 
 from core.runner import Runner
 
+from cpp.features import CPPFeatures
+
 
 class CPPRunner(Runner):
 
   def __init__(self, opts, env, repl, cfg):
-    super(CPPRunner, self).__init__(opts, env, repl, cfg)
+    super(CPPRunner, self).__init__(opts, env, repl, cfg, CPPFeatures)
     self.generators = {'xcode': 'Xcode', 'make': 'Unix Makefiles'}
 
   def get_generator(self):
-    return self.generators.get(self.repl['cpp_generator'])
+    return self.generators.get(self.features.get_features('cmake_generator')[0])
 
-  def get_build_config(self):
+  def get_config(self):
     return self.repl.get('build_config').capitalize()
 
   def parse_config(self):
+    super(CPPRunner, self).parse_config()
+
     if not self.cfg.has_section('cpp'):
       return
 
@@ -49,7 +53,7 @@ class CPPRunner(Runner):
     self.repl['cpp_install']   = self.cfg.get('cpp', 'install')
 
   def update_config(self):
-    pass
+    super(CPPRunner, self).parse_update()
 
   def configure(self):
     repl = self.repl
@@ -58,8 +62,8 @@ class CPPRunner(Runner):
       '-H' + repl['project_folder'],
       '-B' + repl['cpp_build'],
       '-G"' + self.get_generator() + '"',
-      '-DCRUTCH_BUILD_TYPE=' + self.get_build_config(),
-      '-DCMAKE_BUILD_TYPE=' + self.get_build_config(),
+      '-DCRUTCH_BUILD_TYPE=' + self.get_config(),
+      '-DCMAKE_BUILD_TYPE=' + self.get_config(),
       '-DCMAKE_INSTALL_PREFIX=' + repl['cpp_install']
     ]
 
@@ -84,7 +88,7 @@ class CPPRunner(Runner):
 
     command = [repl['cpp_cmake'],
         '--build', repl['cpp_build'],
-        '--config', self.get_build_config()]
+        '--config', self.get_config()]
 
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 

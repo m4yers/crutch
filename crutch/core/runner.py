@@ -24,6 +24,8 @@ import codecs
 import re
 import os
 
+from core.features import Features
+
 RE_VERSION = re.compile("\d+\.\d+\.\d+")
 RE_DOT_HIDDEN = re.compile(r'.*/\..*$')
 RE_PROJECT_NAME = re.compile(r'project|ProjectName')
@@ -32,18 +34,29 @@ RE_JINJA_EXT = re.compile(r'\.(j2|jinja|jinja2)$')
 
 class Runner(object):
 
-  def __init__(self, opts, env, repl, cfg):
+  def __init__(self, opts, env, repl, cfg, features=Features):
     self.opts = opts
     self.env = env
     self.repl = repl
     self.cfg = cfg
+    self.features_class = features
 
     self.dispatchers = {
         'new':   self.create,
         'build': self.build,
         'clean': self.clean,
         'info':  self.info
-    }
+        }
+
+  def parse_features(self):
+    self.features = self.features_class()
+
+    project_features = self.opts.get('project_features') or self.repl.get('project_features') or 'default'
+
+    if project_features != 'default':
+      self.features.parse(project_features)
+
+    self.repl['project_features'] = ','.join(self.features.get_all_features())
 
   def init_folder(self):
     repl = self.repl
@@ -79,13 +92,16 @@ class Runner(object):
         f.write(tmpl.render())
 
   def parse_config(self):
-    pass
+    if not self.cfg.has_section('project'):
+      return
+
+    self.repl['project_features'] = self.cfg.get('project', 'features').split(',')
 
   def update_config(self):
     pass
 
   def create(self):
-    print '[NOT IMPLEMENTED] Runner.create'
+    self.init_folder()
     pass
 
   def build(self):
@@ -103,5 +119,6 @@ class Runner(object):
   def run(self):
     action = self.opts.get('action')
     self.parse_config()
+    self.parse_features()
     self.dispatchers.get(action)()
     pass

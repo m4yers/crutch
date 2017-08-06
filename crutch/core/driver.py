@@ -53,7 +53,7 @@ parser_create.add_argument('-n', '--name', metavar='NAME',
     help='Project name(default=basename(FOLDER))')
 
 parser_create.add_argument('-f', '--features', metavar='FEATURES', nargs='*',
-    default='default', help='Select project features')
+    dest='project_features', help='Select project features')
 
 #------------------------------------------------------------------------------#
 # Build
@@ -95,13 +95,13 @@ class Driver(object):
     repl['file_config'] = project_folder + '/.crutch'
 
     cfg = ConfigParser.RawConfigParser()
-    cfg.read(repl['file_config'])
 
     if opts.get('action') == 'new':
       repl['user'] = os.getlogin()
       repl['project_type'] = opts.get('project_type')
       repl['project_name'] = opts.get('project_name') or os.path.basename(project_folder)
     else:
+      cfg.read(repl['file_config'])
       repl['user'] = cfg.get('project', 'type')
       repl['project_type'] = cfg.get('project', 'type')
       repl['project_name'] = cfg.get('project', 'name')
