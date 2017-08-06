@@ -9,8 +9,8 @@ install:
   - pip install coveralls
 
 script:
-  coverage run --source=crutch setup.py tests
-  python tests/test.py
+  - coverage run --source=crutch setup.py tests
+  - python tests/test.py
 
 after_success:
-  coveralls
+  - coveralls
