@@ -6,6 +6,10 @@ CRUTCH
     :target: https://travis-ci.org/m4yers/crutch
     :alt: Build status
 
+.. image:: https://coveralls.io/repos/github/m4yers/crutch/badge.svg?branch=master
+    :target: https://coveralls.io/github/m4yers/crutch?branch=master
+    :alt: Test Coverage
+
 Have you ever had this moment when you wanted to write a small tool or just try
 some new algorithm but the thought of assembling a proper project folder
 structure spoiled the desire...
