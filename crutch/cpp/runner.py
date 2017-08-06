@@ -48,7 +48,6 @@ class CPPRunner(Runner):
       return
 
     self.repl['cpp_cmake']     = self.cfg.get('cpp', 'cmake')
-    self.repl['cpp_generator'] = self.cfg.get('cpp', 'generator')
     self.repl['cpp_build']     = self.cfg.get('cpp', 'build')
     self.repl['cpp_install']   = self.cfg.get('cpp', 'install')
 
@@ -74,12 +73,11 @@ class CPPRunner(Runner):
 
     project_folder = repl['project_folder']
 
-    repl['cpp_generator'] = 'xcode'
     repl['cpp_build']   = os.path.join(project_folder, '_build')
     repl['cpp_install'] = os.path.join(project_folder, '_install')
     repl['cpp_cmake']   = 'cmake'
 
-    self.init_folder()
+    self.init_project_folder()
 
   def build(self):
     repl = self.repl
