@@ -50,22 +50,43 @@ class CPPRunner(Runner):
   def configure(self):
     repl = self.repl
 
+    build_config = self.repl.get('build_config')
+
+    build_folder = repl['cpp_build']
+    install_folder = repl['cpp_install']
+    if self.features.is_make():
+      build_folder += os.path.sep + build_config
+      install_folder += os.path.sep + build_config
+
     generators = {'xcode': 'Xcode', 'make': 'Unix Makefiles'}
     generator = generators.get(self.features.get_cmake_generator())
 
-    cmake_build_type = self.repl.get('build_config').capitalize()
-    crutch_build_type = '' if self.features.is_make() else cmake_build_type
+    cmake_build_type = build_config.capitalize()
+    if self.features.is_xcode():
+      crutch_build_type += cmake_build_type
+    else:
+      crutch_build_type = ''
 
     command = [repl['cpp_cmake'],
       '-H' + repl['project_folder'],
-      '-B' + repl['cpp_build'],
+      '-B' + build_folder,
       '-G"' + generator + '"',
       '-DCRUTCH_BUILD_TYPE=' + crutch_build_type,
       '-DCMAKE_BUILD_TYPE=' + cmake_build_type,
-      '-DCMAKE_INSTALL_PREFIX=' + repl['cpp_install']
+      '-DCMAKE_INSTALL_PREFIX=' + install_folder
     ]
 
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
+
+  def init_project_folder(self):
+    super(CPPRunner, self).init_project_folder()
+
+    project_folder = self.repl.get('project_folder')
+
+    if self.features.is_doxygen():
+      doc_folder = os.path.join(project_folder, 'doc')
+      command = [ 'cd', doc_folder, '&&', 'doxygen', '-g', '-u', 'Doxyfile']
+      subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
   def create(self):
     project_folder = self.repl['project_folder']
@@ -79,9 +100,15 @@ class CPPRunner(Runner):
   def build(self):
     self.configure()
 
+    build_config = self.repl.get('build_config')
+
+    build_folder = self.repl['cpp_build']
+    if self.features.is_make():
+      build_folder += os.path.sep + build_config
+
     command = [self.repl['cpp_cmake'],
-        '--build', self.repl['cpp_build'],
-        '--config', self.repl.get('build_config').capitalize()]
+        '--build', build_folder,
+        '--config', build_config.capitalize()]
 
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 

@@ -27,12 +27,16 @@ class CPPFeatures(Features):
   def __init__(self):
     super(CPPFeatures, self).__init__()
 
-    self.add_category('cmake_generator', ['xcode', 'make'], ['make'],  only_one=True)
-    self.add_category('testing',         ['gtest'],         ['gtest'], only_one=True)
+    self.add_category('cmake_generator', ['xcode', 'make'], ['make'],    only_one=True)
+    self.add_category('documentation',   ['doxygen'],       [],          only_one=True)
+    self.add_category('testing',         ['gtest'],         ['gtest'],   only_one=True)
 
+  def get_feature_one(self, category):
+    l = self.get_enabled_features(category)
+    return l[0] if l else ''
 
   def get_cmake_generator(self):
-    return self.get_enabled_features('cmake_generator')[0]
+    return self.get_feature_one('cmake_generator')
 
   def is_xcode(self):
     return self.get_cmake_generator() == 'xcode'
@@ -40,12 +44,20 @@ class CPPFeatures(Features):
   def is_make(self):
     return self.get_cmake_generator() == 'make'
 
-  def get_test_runner(self):
-    return self.get_enabled_features('testing')[0]
 
+  def get_test_runner(self):
+    return self.get_feature_one('testing')
 
   def is_gtest(self):
     return self.get_test_runner() == 'gtest'
 
   def has_test(self):
     return self.is_gtest()
+
+
+  def get_doc_type(self):
+    return self.get_feature_one('documentation')
+
+  def is_doxygen(self):
+    return self.get_doc_type() == 'doxygen'
+
