@@ -7,7 +7,7 @@ some new algorithm but the thought of assembling a proper project folder
 structure spoiled the desire...
 
 Crutch is a small-size project generator that allows you to create, build and
-test a small project
+test a project
 
 .. contents::
 
@@ -26,7 +26,7 @@ To create a project within an existing directory::
 
   $ crutch new <type>
 
-To build the project within its directory::
+To build and test the project within its directory::
 
   $ crutch build
 

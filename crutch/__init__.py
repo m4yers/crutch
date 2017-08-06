@@ -22,8 +22,24 @@
 
 
 import sys
+import os
 
-from driver import Driver
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+from core.driver import Driver
+from core.runner import Runner
+
+from cpp.runner import CPPRunner
+
+class Runners(object):
+
+  def __init__(self, runners):
+    super(Runners, self).__init__()
+    self.runners = runners
+
+  def get(self, type):
+    return self.runners.get(type, Runner)
+
 
 def main():
-    Driver().run()
+  Driver(Runners({'cpp':CPPRunner})).run()

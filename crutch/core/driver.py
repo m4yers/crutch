@@ -29,8 +29,6 @@ import string
 import sys
 import os
 
-import runners
-
 
 #------------------------------------------------------------------------------#
 # MENU
@@ -54,7 +52,7 @@ parser_create.add_argument('project_folder', metavar='FOLDER', default='.',
 parser_create.add_argument('-n', '--name', metavar='NAME',
     help='Project name(default=basename(FOLDER))')
 
-parser_create.add_argument('-f', '--features', metavar='FEATURES',
+parser_create.add_argument('-f', '--features', metavar='FEATURES', nargs='*',
     default='default', help='Select project features')
 
 #------------------------------------------------------------------------------#
@@ -65,13 +63,18 @@ parser_build = subparsers.add_parser('build', help='Build the project')
 parser_build.add_argument('project_folder', metavar='FOLDER', default='.',
     nargs='?',help='Project folder(default=curcwd())')
 
+parser_build.add_argument('-c', '--config', metavar='CONFIG',
+    dest='build_config', default='debug', choices=['debug', 'release'],
+    help='Select project config')
+
 
 #------------------------------------------------------------------------------#
 # DRIVER
 #------------------------------------------------------------------------------#
 class Driver(object):
 
-  def __init__(self, argv=None):
+  def __init__(self, runners, argv=None):
+    self.runners = runners
     if argv is None:
       argv = sys.argv
     self.argv = argv
@@ -85,6 +88,8 @@ class Driver(object):
     project_folder = os.path.abspath(opts.get('project_folder'))
 
     repl = env.globals
+    repl.update(opts)
+
     repl['python'] = sys.executable
     repl['project_folder'] = project_folder
     repl['file_config'] = project_folder + '/.crutch'
@@ -101,7 +106,7 @@ class Driver(object):
       repl['project_type'] = cfg.get('project', 'type')
       repl['project_name'] = cfg.get('project', 'name')
 
-    return runners.get_runner(repl['project_type'])(opts, env, repl, cfg)
+    return self.runners.get(repl['project_type'])(opts, env, repl, cfg)
 
   def run(self):
     opts = parser.parse_args(self.argv[1:])
