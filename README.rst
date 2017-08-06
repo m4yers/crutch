@@ -2,13 +2,21 @@
 CRUTCH
 ======
 
+.. image:: https://badge.fury.io/py/crutch.svg
+    :target: https://badge.fury.io/py/crutch
+    :alt: PyPi version
+
 .. image:: https://travis-ci.org/m4yers/crutch.svg?branch=master
     :target: https://travis-ci.org/m4yers/crutch
     :alt: Build status
 
 .. image:: https://coveralls.io/repos/github/m4yers/crutch/badge.svg?branch=master
     :target: https://coveralls.io/github/m4yers/crutch?branch=master
-    :alt: Test Coverage
+    :alt: Test coverage
+
+.. image:: https://landscape.io/github/m4yers/crutch/master/landscape.svg?style=flat
+   :target: https://landscape.io/github/m4yers/crutch/master
+   :alt: Code Health
 
 Have you ever had this moment when you wanted to write a small tool or just try
 some new algorithm but the thought of assembling a proper project folder
