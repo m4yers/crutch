@@ -24,53 +24,12 @@
 from pkg_resources import Requirement, resource_filename
 from jinja2 import Environment, FileSystemLoader, Template
 import ConfigParser
-import argparse
 import string
 import sys
 import os
 
+from core.menu import Parser
 
-#------------------------------------------------------------------------------#
-# MENU
-#------------------------------------------------------------------------------#
-parser = argparse.ArgumentParser(prog='Crutch',
-    description='Get a project running fast')
-
-subparsers = parser.add_subparsers(title='Actions', dest='action')
-
-#------------------------------------------------------------------------------#
-# Create
-#------------------------------------------------------------------------------#
-parser_create = subparsers.add_parser('new', help='Create new project')
-
-parser_create.add_argument('project_type', metavar='TYPE',
-    choices=['cpp', 'python'], help='Project type')
-
-parser_create.add_argument('project_folder', metavar='FOLDER', default='.',
-    nargs='?',help='Project folder(default=curcwd())')
-
-parser_create.add_argument('-n', '--name', metavar='NAME',
-    help='Project name(default=basename(FOLDER))')
-
-parser_create.add_argument('-f', '--features', metavar='FEATURES', nargs='*',
-    dest='project_features', help='Select project features')
-
-#------------------------------------------------------------------------------#
-# Build
-#------------------------------------------------------------------------------#
-parser_build = subparsers.add_parser('build', help='Build the project')
-
-parser_build.add_argument('project_folder', metavar='FOLDER', default='.',
-    nargs='?',help='Project folder(default=curcwd())')
-
-parser_build.add_argument('-c', '--config', metavar='CONFIG',
-    dest='build_config', default='debug', choices=['debug', 'release'],
-    help='Select project config')
-
-
-#------------------------------------------------------------------------------#
-# DRIVER
-#------------------------------------------------------------------------------#
 class Driver(object):
 
   def __init__(self, runners, argv=None):
@@ -109,6 +68,6 @@ class Driver(object):
     return self.runners.get(repl['project_type'])(opts, env, repl, cfg)
 
   def run(self):
-    opts = parser.parse_args(self.argv[1:])
+    opts = Parser.parse_args(self.argv[1:])
     runner = self.create_runner(opts)
     runner.run()
