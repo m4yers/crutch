@@ -1,0 +1,13 @@
+file(GLOB SOURCES *.cpp)
+
+add_executable(test_{{ project_name }} ${SOURCES})
+
+target_link_libraries(test_{{ project_name }} libgtest libgmock)
+
+add_test(NAME test_{{ project_name }} COMMAND test_{{ project_name }})
+
+add_custom_command(
+  TARGET test_{{ project_name }}
+  COMMENT "Run tests"
+  POST_BUILD
+  COMMAND test_{{ project_name }})

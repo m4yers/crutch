@@ -58,7 +58,13 @@ class Runner(object):
     if project_features != 'default':
       self.features.parse(project_features)
 
-    self.repl['project_features'] = ','.join(self.features.get_all_features())
+    self.repl['project_features'] = ','.join(self.features.get_enabled_features())
+
+    for c in self.features.get_enabled_categories():
+      self.repl['project_has_feature_category_' + c] = True
+
+    for f in self.features.get_enabled_features():
+      self.repl['project_has_feature_' + f] = True
 
   def init_project_folder(self):
     repl = self.repl
@@ -73,35 +79,39 @@ class Runner(object):
       print 'The "{}" project already exists. Exit.'.format(project_name)
       exit
 
-    re_project_type = re.compile(r'^' + project_type)
-    templates = filter(re_project_type.match, env.list_templates())
+    feats = self.features.get_enabled_features()
+    folders = ['main'] + ['features' + os.path.sep + f for f in feats]
 
-    for tmpl_src in templates:
-      filename = re_project_type.sub('', tmpl_src)
-      filename = RE_PROJECT_NAME.sub(project_name, filename)
-      filename = project_folder + filename
+    for f in folders:
+      re_tmpl_prefix = re.compile(r'^' + project_type + os.path.sep + f)
+      templates = filter(re_tmpl_prefix.match, env.list_templates())
 
-      # Do not override existing files
-      if os.path.exists(filename):
-        continue
+      for tmpl_src in templates:
+        filename = re_tmpl_prefix.sub('', tmpl_src)
+        filename = RE_PROJECT_NAME.sub(project_name, filename)
+        filename = project_folder + filename
 
-      # Create the containing folder if does not exist already
-      folder = os.path.dirname(filename)
-      if not os.path.exists(folder):
-        os.makedirs(folder)
+        # Do not override existing files
+        if os.path.exists(filename):
+          continue
 
-      tmpl = env.get_template(tmpl_src)
+        # Create the containing folder if does not exist already
+        folder = os.path.dirname(filename)
+        if not os.path.exists(folder):
+          os.makedirs(folder)
 
-      # If the file is not a template just copy it
-      if not RE_JINJA_FILE.match(filename):
-        shutil.copyfile(tmpl.filename, filename)
-        continue
+        tmpl = env.get_template(tmpl_src)
 
-      # Drop .jinja extension
-      filename = RE_JINJA_EXT.sub('', filename)
+        # If the file is not a template just copy it
+        if not RE_JINJA_FILE.match(filename):
+          shutil.copyfile(tmpl.filename, filename)
+          continue
 
-      with codecs.open(filename, 'w', 'utf-8') as f:
-        f.write(tmpl.render())
+        # Drop .jinja extension
+        filename = RE_JINJA_EXT.sub('', filename)
+
+        with codecs.open(filename, 'w', 'utf-8') as f:
+          f.write(tmpl.render())
 
   def parse_config(self):
     if not self.cfg.has_section('project'):

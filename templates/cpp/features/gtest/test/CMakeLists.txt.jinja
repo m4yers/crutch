@@ -33,17 +33,4 @@ include_directories(
   "${source_dir}/googletest/include"
   "${source_dir}/googlemock/include")
 
-file(GLOB SOURCES *.cpp)
-
-add_executable(Test ${SOURCES})
-
-target_link_libraries(Test libgtest libgmock)
-
-add_test(NAME Test COMMAND Test)
-
-set(UNIT_TEST Test)
-add_custom_command(
-  TARGET ${UNIT_TEST}
-  COMMENT "Run tests"
-  POST_BUILD
-  COMMAND ${UNIT_TEST})
+add_subdirectory({{ project_name }})

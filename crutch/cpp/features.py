@@ -28,4 +28,24 @@ class CPPFeatures(Features):
     super(CPPFeatures, self).__init__()
 
     self.add_category('cmake_generator', ['xcode', 'make'], ['make'],  only_one=True)
-    self.add_category('test_runner',     ['gtest'],         ['gtest'], only_one=True)
+    self.add_category('testing',         ['gtest'],         ['gtest'], only_one=True)
+
+
+  def get_cmake_generator(self):
+    return self.get_enabled_features('cmake_generator')[0]
+
+  def is_xcode(self):
+    return self.get_cmake_generator() == 'xcode'
+
+  def is_make(self):
+    return self.get_cmake_generator() == 'make'
+
+  def get_test_runner(self):
+    return self.get_enabled_features('testing')[0]
+
+
+  def is_gtest(self):
+    return self.get_test_runner() == 'gtest'
+
+  def has_test(self):
+    return self.is_gtest()

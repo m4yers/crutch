@@ -37,9 +37,6 @@ class Features(object):
     # category name -> selected features list map
     self.parsed = dict()
 
-    # category name -> True|False default features map
-    self.is_default = dict()
-
     # feature name -> category object map
     self.features = dict()
 
@@ -50,6 +47,9 @@ class Features(object):
     features = list()
 
     for n,c in self.categories.items():
+      if n not in self.parsed:
+        continue
+
       features.append('{}: {}'.format(n, ', '.join(
         map(lambda f: '{1}{0}{2}'.format(f,
             enabled.get(f in self.parsed[n]),
@@ -66,19 +66,19 @@ class Features(object):
 
     self.categories[name] = category
     self.parsed[name] = default
-    self.is_default[name] = True
 
     for f in features:
       self.features[f] = category
 
   def parse(self, features):
+    self.parsed = dict()
+
     for f in features:
       category = self.features.get(f)
       if not category:
         raise Exception("Cannot find the feature '%s'" % f)
 
-      is_default = self.is_default.get(category.name)
-      parsed = [] if is_default else self.parsed.get(category.name)
+      parsed = self.parsed.get(category.name, [])
 
       if category.only_one and len(parsed) != 0:
         raise Exception("Feature overlap '%s' with '%s'" % f, parsed)
@@ -86,10 +86,11 @@ class Features(object):
       parsed.append(f)
 
       self.parsed[category.name] = parsed
-      self.is_default[category.name] = False
 
-  def get_features(self, category):
-    return self.parsed.get(category, [])
-
-  def get_all_features(self):
+  def get_enabled_features(self, category=None):
+    if category:
+      return self.parsed.get(category, [])
     return sum(self.parsed.values(), [])
+
+  def get_enabled_categories(self):
+    return self.parsed.keys()
