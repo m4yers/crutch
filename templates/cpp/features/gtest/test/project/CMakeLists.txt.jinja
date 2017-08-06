@@ -1,6 +1,7 @@
-file(GLOB SOURCES *.cpp)
+file (GLOB ProjectSource ${CMAKE_SOURCE_DIR}/src/{{ project_name }}/*.cpp)
+file (GLOB TestSource *.cpp)
 
-add_executable(test_{{ project_name }} ${SOURCES})
+add_executable(test_{{ project_name }} ${TestSource} ${ProjectSource})
 
 target_link_libraries(test_{{ project_name }} libgtest libgmock)
 
