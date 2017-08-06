@@ -2,6 +2,10 @@
 CRUTCH
 ======
 
+.. image:: https://travis-ci.org/m4yers/crutch.svg?branch=master
+    :target: https://travis-ci.org/m4yers/crutch
+    :alt: Build status
+
 Have you ever had this moment when you wanted to write a small tool or just try
 some new algorithm but the thought of assembling a proper project folder
 structure spoiled the desire...
@@ -16,7 +20,7 @@ Installation
 
 From pip::
 
-  $ pip install -e <crutch>
+  $ pip install crutch
 
 
 Usage
@@ -45,3 +49,17 @@ In Future::
   java
   vim
   ...
+
+
+Links
+=====
+
+* PyPI_
+* GitHub_
+* `Travis CI`_
+* Coveralls_
+
+.. _PyPI: https://pypi.python.org/pypi/crutch/
+.. _GitHub: https://github.com/m4yers/crutch
+.. _`Travis CI`: https://travis-ci.org/m4yers/crutch
+.. _`Coveralls`: https://coveralls.io/r/m4yers/crutch
