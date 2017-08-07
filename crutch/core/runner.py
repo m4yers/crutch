@@ -27,7 +27,7 @@ import os
 
 from core.features import Features
 
-RE_VERSION      = re.compile("\d+\.\d+\.\d+")
+RE_VERSION      = re.compile(r'\d+\.\d+\.\d+')
 RE_DOT_HIDDEN   = re.compile(r'.*/\..*$')
 RE_PROJECT_NAME = re.compile(r'project|ProjectName')
 RE_JINJA_EXT    = re.compile(r'\.(j2|jinja|jinja2)$')
