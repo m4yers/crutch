@@ -1,5 +1,5 @@
 import unittest
 
-import features
+import tests.core.features as features
 
-suite = unittest.defaultTestLoader.loadTestsFromModule(features)
+SUITE = unittest.defaultTestLoader.loadTestsFromModule(features)

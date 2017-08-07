@@ -3,3 +3,13 @@ test-warnings: true
 strictness: veryhigh
 max-line-length: 80
 autodetect: true
+pylint:
+  run: true
+pep8:
+  run: false
+pep257:
+  run: false
+ignore-paths:
+  - docs
+  - templates
+  - support
