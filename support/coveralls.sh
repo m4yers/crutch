@@ -8,5 +8,5 @@ pip install -r requirements.txt
 pip install coveralls
 pip install pyyaml
 
-coverage run tests/test.py
+coverage run --source=crutch tests/test.py
 coveralls

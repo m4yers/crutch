@@ -9,7 +9,7 @@ install:
   - pip install coveralls
 
 script:
-  - coverage run tests/test.py
+  - coverage run --source=crutch tests/test.py
 
 after_success:
   - coveralls
