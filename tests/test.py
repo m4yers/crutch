@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'
 
 import tests.core as core
 
-SUITES = unittest.TestSuite([core.SUITE])
+SUITES = unittest.TestSuite([core.get_suite()])
 
 if __name__ == '__main__':
   unittest.TextTestRunner(verbosity=2).run(SUITES)
