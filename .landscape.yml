@@ -5,6 +5,8 @@ max-line-length: 80
 autodetect: true
 pep8:
   disable:
-    - E302
-    - E226
     - E41
+    - E111
+    - E114
+    - E226
+    - E302
