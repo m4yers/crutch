@@ -62,10 +62,9 @@ class CPPRunner(Runner):
     generator = generators.get(self.features.get_cmake_generator())
 
     cmake_build_type = build_config.capitalize()
+    crutch_build_type = ''
     if self.features.is_xcode():
       crutch_build_type += cmake_build_type
-    else:
-      crutch_build_type = ''
 
     command = [repl['cpp_cmake'],
       '-H' + repl['project_folder'],

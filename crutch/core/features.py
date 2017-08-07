@@ -60,7 +60,7 @@ class Features(object):
 
   def add_category(self, name, features, default, only_one):
     if self.categories.has_key(name):
-      raise ArgumentError()
+      raise Exception("Category already exists")
 
     category = Category(name, features, default, only_one)
 
