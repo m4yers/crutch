@@ -5,8 +5,7 @@ max-line-length: 80
 autodetect: true
 pylint:
   options:
-    docstring-min-length: 10
-    indent-string: "  "
+    rcfile: .pylint.conf
 pep8:
   disable:
     - E104
