@@ -43,8 +43,10 @@ class Runner(object):
     self.env = env
     self.repl = repl
     self.cfg = cfg
-    self.features_class = features
-    self.features = None
+    self.features = features()
+
+    self.parse_config()
+    self.init_project_features()
 
     self.dispatchers = {
         'new':   self.create,
@@ -54,8 +56,6 @@ class Runner(object):
         }
 
   def init_project_features(self):
-    self.features = self.features_class()
-
     project_features = self.opts.get('project_features') or \
       self.repl.get('project_features') or 'default'
 
@@ -137,6 +137,4 @@ class Runner(object):
 
   def run(self):
     action = self.opts.get('action')
-    self.parse_config()
-    self.init_project_features()
     self.dispatchers.get(action)()
