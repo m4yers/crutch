@@ -20,39 +20,51 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+""" Main parser setup"""
+
 import argparse
 
-Parser = argparse.ArgumentParser(prog='Crutch',
-    description='Get a project running fast')
+def get_parser():
 
-subparsers = Parser.add_subparsers(title='Actions', dest='action')
+  parser = argparse.ArgumentParser(
+      prog='Crutch',
+      description='Get a project running fast')
+
+  subparsers = parser.add_subparsers(title='Actions', dest='action')
 
 #------------------------------------------------------------------------------#
 # Create
 #------------------------------------------------------------------------------#
-parser_create = subparsers.add_parser('new', help='Create new project')
+  parser_create = subparsers.add_parser('new', help='Create new project')
 
-parser_create.add_argument('project_type', metavar='TYPE',
-    choices=['cpp', 'python'], help='Project type')
+  parser_create.add_argument(
+      'project_type', metavar='TYPE',
+      choices=['cpp', 'python'], help='Project type')
 
-parser_create.add_argument('project_folder', metavar='FOLDER', default='.',
-    nargs='?',help='Project folder(default=curcwd())')
+  parser_create.add_argument(
+      'project_folder', metavar='FOLDER', default='.',
+      nargs='?', help='Project folder(default=curcwd())')
 
-parser_create.add_argument('-n', '--name', metavar='NAME',
-    help='Project name(default=basename(FOLDER))')
+  parser_create.add_argument(
+      '-n', '--name', metavar='NAME',
+      help='Project name(default=basename(FOLDER))')
 
-parser_create.add_argument('-f', '--features', metavar='FEATURES', nargs='*',
-    dest='project_features', help='Select project features')
+  parser_create.add_argument(
+      '-f', '--features', metavar='FEATURES', nargs='*',
+      dest='project_features', help='Select project features')
 
 #------------------------------------------------------------------------------#
 # Build
 #------------------------------------------------------------------------------#
-parser_build = subparsers.add_parser('build', help='Build the project')
+  parser_build = subparsers.add_parser('build', help='Build the project')
 
-parser_build.add_argument('project_folder', metavar='FOLDER', default='.',
-    nargs='?',help='Project folder(default=curcwd())')
+  parser_build.add_argument(
+      'project_folder', metavar='FOLDER', default='.',
+      nargs='?', help='Project folder(default=curcwd())')
 
-parser_build.add_argument('-c', '--config', metavar='CONFIG',
-    dest='build_config', default='debug', choices=['debug', 'release'],
-    help='Select project config')
+  parser_build.add_argument(
+      '-c', '--config', metavar='CONFIG',
+      dest='build_config', default='debug', choices=['debug', 'release'],
+      help='Select project config')
 
+  return parser

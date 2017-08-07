@@ -24,12 +24,12 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
-from core.driver import Driver
-from core.runner import Runner
+from crutch.core.driver import Driver
+from crutch.core.runner import Runner
 
-from cpp.runner import CPPRunner
+from crutch.cpp.runner import CPPRunner
 
 class Runners(object):
 
@@ -37,8 +37,8 @@ class Runners(object):
     super(Runners, self).__init__()
     self.runners = runners
 
-  def get(self, type):
-    return self.runners.get(type, Runner)
+  def get(self, kind):
+    return self.runners.get(kind, Runner)
 
 
 def main():

@@ -20,20 +20,20 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from core.features import Features
+from crutch.core.features import Features
 
 class CPPFeatures(Features):
 
   def __init__(self):
     super(CPPFeatures, self).__init__()
 
-    self.add_category('cmake_generator', ['xcode', 'make'], ['make'],    only_one=True)
-    self.add_category('documentation',   ['doxygen'],       [],          only_one=True)
-    self.add_category('testing',         ['gtest'],         ['gtest'],   only_one=True)
+    self.add_category('cmake_generator', ['xcode', 'make'], ['make'], only_one=True)
+    self.add_category('documentation', ['doxygen'], [], only_one=True)
+    self.add_category('testing', ['gtest'], ['gtest'], only_one=True)
 
   def get_feature_one(self, category):
-    l = self.get_enabled_features(category)
-    return l[0] if l else ''
+    features = self.get_enabled_features(category)
+    return features[0] if features else ''
 
   def get_cmake_generator(self):
     return self.get_feature_one('cmake_generator')

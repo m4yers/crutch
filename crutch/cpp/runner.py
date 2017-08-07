@@ -20,16 +20,18 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+""" This module defines C++ runner and supplements"""
+
 import subprocess
-import sys
 import os
 
-from core.runner import Runner
+from crutch.core.runner import Runner
 
-from cpp.features import CPPFeatures
+from crutch.cpp.features import CPPFeatures
 
 
 class CPPRunner(Runner):
+  """ C++ Runner """
 
   def __init__(self, opts, env, repl, cfg):
     super(CPPRunner, self).__init__(opts, env, repl, cfg, CPPFeatures)
@@ -40,12 +42,12 @@ class CPPRunner(Runner):
     if not self.cfg.has_section('cpp'):
       return
 
-    self.repl['cpp_cmake']     = self.cfg.get('cpp', 'cmake')
-    self.repl['cpp_build']     = self.cfg.get('cpp', 'build')
-    self.repl['cpp_install']   = self.cfg.get('cpp', 'install')
+    self.repl['cpp_cmake'] = self.cfg.get('cpp', 'cmake')
+    self.repl['cpp_build'] = self.cfg.get('cpp', 'build')
+    self.repl['cpp_install'] = self.cfg.get('cpp', 'install')
 
   def update_config(self):
-    super(CPPRunner, self).parse_update()
+    super(CPPRunner, self).parse_config()
 
   def configure(self):
     repl = self.repl
@@ -66,14 +68,15 @@ class CPPRunner(Runner):
     if self.features.is_xcode():
       crutch_build_type += cmake_build_type
 
-    command = [repl['cpp_cmake'],
-      '-H' + repl['project_folder'],
-      '-B' + build_folder,
-      '-G"' + generator + '"',
-      '-DCRUTCH_BUILD_TYPE=' + crutch_build_type,
-      '-DCMAKE_BUILD_TYPE=' + cmake_build_type,
-      '-DCMAKE_INSTALL_PREFIX=' + install_folder
-    ]
+    command = [
+        repl['cpp_cmake'],
+        '-H' + repl['project_folder'],
+        '-B' + build_folder,
+        '-G"' + generator + '"',
+        '-DCRUTCH_BUILD_TYPE=' + crutch_build_type,
+        '-DCMAKE_BUILD_TYPE=' + cmake_build_type,
+        '-DCMAKE_INSTALL_PREFIX=' + install_folder
+        ]
 
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
@@ -84,15 +87,15 @@ class CPPRunner(Runner):
 
     if self.features.is_doxygen():
       doc_folder = os.path.join(project_folder, 'doc')
-      command = [ 'cd', doc_folder, '&&', 'doxygen', '-g', '-u', 'Doxyfile']
+      command = ['cd', doc_folder, '&&', 'doxygen', '-g', '-u', 'Doxyfile']
       subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
   def create(self):
     project_folder = self.repl['project_folder']
 
-    self.repl['cpp_build']   = os.path.join(project_folder, '_build')
+    self.repl['cpp_build'] = os.path.join(project_folder, '_build')
     self.repl['cpp_install'] = os.path.join(project_folder, '_install')
-    self.repl['cpp_cmake']   = 'cmake'
+    self.repl['cpp_cmake'] = 'cmake'
 
     self.init_project_folder()
 
@@ -105,8 +108,8 @@ class CPPRunner(Runner):
     if self.features.is_make():
       build_folder += os.path.sep + build_config
 
-    command = [self.repl['cpp_cmake'],
-        '--build', build_folder,
+    command = [self.repl['cpp_cmake'], \
+        '--build', build_folder,       \
         '--config', build_config.capitalize()]
 
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)

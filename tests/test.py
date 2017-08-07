@@ -5,13 +5,11 @@ import unittest
 import sys
 import os
 
-this_folder = os.path.abspath(os.path.dirname(__file__))
-root_folder = os.path.join(this_folder, '..')
-sys.path.insert(0, root_folder)
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 import tests.core as core
 
-suites = unittest.TestSuite([core.suite])
+SUITES = unittest.TestSuite([core.suite])
 
 if __name__ == '__main__':
-  unittest.TextTestRunner(verbosity=2).run(suites)
+  unittest.TextTestRunner(verbosity=2).run(SUITES)

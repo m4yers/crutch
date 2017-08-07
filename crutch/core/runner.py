@@ -22,19 +22,21 @@
 
 import codecs
 import shutil
+import sys
 import re
 import os
 
-from core.features import Features
+from crutch.core.features import Features
 
-RE_VERSION      = re.compile(r'\d+\.\d+\.\d+')
-RE_DOT_HIDDEN   = re.compile(r'.*/\..*$')
+RE_VERSION = re.compile(r'\d+\.\d+\.\d+')
+RE_DOT_HIDDEN = re.compile(r'.*/\..*$')
 RE_PROJECT_NAME = re.compile(r'project|ProjectName')
-RE_JINJA_EXT    = re.compile(r'\.(j2|jinja|jinja2)$')
-RE_JINJA_FILE   = re.compile(r'.*\.(j2|jinja|jinja2)$')
+RE_JINJA_EXT = re.compile(r'\.(j2|jinja|jinja2)$')
+RE_JINJA_FILE = re.compile(r'.*\.(j2|jinja|jinja2)$')
 
 
 class Runner(object):
+  """Runner"""
 
   def __init__(self, opts, env, repl, cfg, features=Features):
     self.opts = opts
@@ -42,6 +44,7 @@ class Runner(object):
     self.repl = repl
     self.cfg = cfg
     self.features_class = features
+    self.features = None
 
     self.dispatchers = {
         'new':   self.create,
@@ -53,38 +56,36 @@ class Runner(object):
   def init_project_features(self):
     self.features = self.features_class()
 
-    project_features = self.opts.get('project_features') or self.repl.get('project_features') or 'default'
+    project_features = self.opts.get('project_features') or \
+      self.repl.get('project_features') or 'default'
 
     if project_features != 'default':
       self.features.parse(project_features)
 
     self.repl['project_features'] = ','.join(self.features.get_enabled_features())
 
-    for c in self.features.get_enabled_categories():
-      self.repl['project_has_feature_category_' + c] = True
+    for category in self.features.get_enabled_categories():
+      self.repl['project_has_feature_category_' + category] = True
 
-    for f in self.features.get_enabled_features():
-      self.repl['project_has_feature_' + f] = True
+    for feature in self.features.get_enabled_features():
+      self.repl['project_has_feature_' + feature] = True
 
   def init_project_folder(self):
-    repl = self.repl
-    env = self.env
-
-    project_type   = repl['project_type']
-    project_name   = repl['project_name']
-    project_folder = repl['project_folder']
+    project_type = self.repl['project_type']
+    project_name = self.repl['project_name']
+    project_folder = self.repl['project_folder']
 
     # Existing config file means a project already exists
-    if os.path.exists(repl.get('file_config')):
+    if os.path.exists(self.repl.get('file_config')):
       print 'The "{}" project already exists. Exit.'.format(project_name)
-      exit
+      sys.exit(1)
 
     feats = self.features.get_enabled_features()
     folders = ['main'] + ['features' + os.path.sep + f for f in feats]
 
-    for f in folders:
-      re_tmpl_prefix = re.compile(r'^' + project_type + os.path.sep + f)
-      templates = filter(re_tmpl_prefix.match, env.list_templates())
+    for folder in folders:
+      re_tmpl_prefix = re.compile(r'^' + project_type + os.path.sep + folder)
+      templates = filter(re_tmpl_prefix.match, self.env.list_templates())
 
       for tmpl_src in templates:
         filename = re_tmpl_prefix.sub('', tmpl_src)
@@ -100,7 +101,7 @@ class Runner(object):
         if not os.path.exists(folder):
           os.makedirs(folder)
 
-        tmpl = env.get_template(tmpl_src)
+        tmpl = self.env.get_template(tmpl_src)
 
         # If the file is not a template just copy it
         if not RE_JINJA_FILE.match(filename):
@@ -110,8 +111,8 @@ class Runner(object):
         # Drop .jinja extension
         filename = RE_JINJA_EXT.sub('', filename)
 
-        with codecs.open(filename, 'w', 'utf-8') as f:
-          f.write(tmpl.render())
+        with codecs.open(filename, 'w', 'utf-8') as out:
+          out.write(tmpl.render())
 
   def parse_config(self):
     if not self.cfg.has_section('project'):
@@ -124,23 +125,18 @@ class Runner(object):
 
   def create(self):
     self.init_project_folder()
-    pass
 
   def build(self):
-    print '[NOT IMPLEMENTED] Runner.build'
-    pass
+    print '[NOT IMPLEMENTED] Runner.build' + self
 
   def clean(self):
-    print '[NOT IMPLEMENTED] Runner.clean'
-    pass
+    print '[NOT IMPLEMENTED] Runner.clean' + self
 
   def info(self):
-    print '[NOT IMPLEMENTED] Runner.info'
-    pass
+    print '[NOT IMPLEMENTED] Runner.info' + self
 
   def run(self):
     action = self.opts.get('action')
     self.parse_config()
     self.init_project_features()
     self.dispatchers.get(action)()
-    pass

@@ -20,15 +20,17 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+""" The main driver of the tool"""
 
-from pkg_resources import Requirement, resource_filename
-from jinja2 import Environment, FileSystemLoader, Template
 import ConfigParser
-import string
 import sys
 import os
 
-from core.menu import Parser
+from pkg_resources import Requirement, resource_filename
+
+import jinja2
+
+import crutch.core.menu as Menu
 
 class Driver(object):
 
@@ -42,7 +44,7 @@ class Driver(object):
     opts = vars(opts)
 
     templates = resource_filename(Requirement.parse('crutch'), 'templates')
-    env = Environment(loader=FileSystemLoader(templates))
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(templates))
 
     project_folder = os.path.abspath(opts.get('project_folder'))
 
@@ -68,6 +70,6 @@ class Driver(object):
     return self.runners.get(repl['project_type'])(opts, env, repl, cfg)
 
   def run(self):
-    opts = Parser.parse_args(self.argv[1:])
+    opts = Menu.get_parser().parse_args(self.argv[1:])
     runner = self.create_runner(opts)
     runner.run()

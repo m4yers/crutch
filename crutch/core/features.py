@@ -46,15 +46,17 @@ class Features(object):
 
     features = list()
 
-    for n,c in self.categories.items():
-      if n not in self.parsed:
+    for name, category in self.categories.items():
+      if name not in self.parsed:
         continue
 
-      features.append('{}: {}'.format(n, ', '.join(
-        map(lambda f: '{1}{0}{2}'.format(f,
-            enabled.get(f in self.parsed[n]),
-            default.get(f in c.default)),
-          c.features))))
+      decorated_features = [
+          '{1}{0}{2}'.format(feature, \
+              enabled.get(feature in self.parsed[name]), \
+              default.get(feature in category.default)) \
+              for feature in category.features]
+
+      features.append('{}: {}'.format(name, ', '.join(decorated_features)))
 
     return '[{} {}]'.format(self.__class__.__name__, ', '.join(features))
 
@@ -67,23 +69,23 @@ class Features(object):
     self.categories[name] = category
     self.parsed[name] = default
 
-    for f in features:
-      self.features[f] = category
+    for feature in features:
+      self.features[feature] = category
 
   def parse(self, features):
     self.parsed = dict()
 
-    for f in features:
-      category = self.features.get(f)
+    for feature in features:
+      category = self.features.get(feature)
       if not category:
-        raise Exception("Cannot find the feature '%s'" % f)
+        raise Exception("Cannot find the feature '%s'" % feature)
 
       parsed = self.parsed.get(category.name, [])
 
-      if category.only_one and len(parsed) != 0:
-        raise Exception("Feature overlap '%s' with '%s'" % f, parsed)
+      if category.only_one and parsed:
+        raise Exception("Feature overlap '%s' with '%s'" % feature, parsed)
 
-      parsed.append(f)
+      parsed.append(feature)
 
       self.parsed[category.name] = parsed
 

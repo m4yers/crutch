@@ -3,10 +3,3 @@ test-warnings: true
 strictness: veryhigh
 max-line-length: 80
 autodetect: true
-pylint:
-  options:
-    rcfile: .pylint.conf
-pep8:
-  disable:
-    - E104
-    - E111
