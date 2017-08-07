@@ -26,8 +26,6 @@ import sys
 import re
 import os
 
-from crutch.core.features import Features
-
 RE_VERSION = re.compile(r'\d+\.\d+\.\d+')
 RE_DOT_HIDDEN = re.compile(r'.*/\..*$')
 RE_PROJECT_NAME = re.compile(r'project|ProjectName')
@@ -38,12 +36,12 @@ RE_JINJA_FILE = re.compile(r'.*\.(j2|jinja|jinja2)$')
 class Runner(object):
   """Runner"""
 
-  def __init__(self, opts, env, repl, cfg, features=Features):
+  def __init__(self, opts, env, repl, cfg, features):
     self.opts = opts
     self.env = env
     self.repl = repl
     self.cfg = cfg
-    self.features = features()
+    self.features = features
 
     self.parse_config()
     self.init_project_features()

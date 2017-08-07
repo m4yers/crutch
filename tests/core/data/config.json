@@ -1,0 +1,10 @@
+{
+  "user": {
+    "name": "username"
+  },
+  "project": {
+    "name": "blah",
+    "type": "test",
+    "features": [ "one", "two", "three"]
+  }
+}

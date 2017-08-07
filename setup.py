@@ -34,8 +34,5 @@ setup(
     package_data={
         'templates': ['*.*'],
     },
-    # test_suite='test.test_crutch',
-    # py_modules=['crutch'],
-    # zip_safe=False,
     entry_points={'console_scripts': ['crutch = crutch:main']},
 )

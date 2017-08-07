@@ -20,13 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-""" This module defines C++ runner and supplements"""
-
 import subprocess
 import os
 
 from crutch.core.runner import Runner
-
 from crutch.cpp.features import CPPFeatures
 
 
@@ -34,7 +31,7 @@ class CPPRunner(Runner):
   """ C++ Runner """
 
   def __init__(self, opts, env, repl, cfg):
-    super(CPPRunner, self).__init__(opts, env, repl, cfg, CPPFeatures)
+    super(CPPRunner, self).__init__(opts, env, repl, cfg, CPPFeatures())
 
   def parse_config(self):
     super(CPPRunner, self).parse_config()
@@ -50,12 +47,10 @@ class CPPRunner(Runner):
     super(CPPRunner, self).parse_config()
 
   def configure(self):
-    repl = self.repl
-
     build_config = self.repl.get('build_config')
 
-    build_folder = repl['cpp_build']
-    install_folder = repl['cpp_install']
+    build_folder = self.repl['cpp_build']
+    install_folder = self.repl['cpp_install']
     if self.features.is_make():
       build_folder += os.path.sep + build_config
       install_folder += os.path.sep + build_config
@@ -69,8 +64,8 @@ class CPPRunner(Runner):
       crutch_build_type += cmake_build_type
 
     command = [
-        repl['cpp_cmake'],
-        '-H' + repl['project_folder'],
+        self.repl['cpp_cmake'],
+        '-H' + self.repl['project_folder'],
         '-B' + build_folder,
         '-G"' + generator + '"',
         '-DCRUTCH_BUILD_TYPE=' + crutch_build_type,
