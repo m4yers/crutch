@@ -91,10 +91,12 @@ class CPPRunner(Runner):
     self.init_project_folder()
 
   def build(self):
-    self.configure()
-
     build_config = self.renv.get_prop('build_config')
     build_folder = self.renv.get_prop('cpp_build')
+
+    # If not build folder we need to configure cmake first
+    if not os.path.exists(build_folder):
+      self.configure()
 
     if self.features.is_make():
       build_folder += os.path.sep + build_config
