@@ -40,7 +40,7 @@ class Driver(object):
     self.argv = argv
 
   def create_runner(self, opts):
-    opts = vars(opts)
+    opts = opts if isinstance(opts, dict) else vars(opts)
 
     templates = resource_filename(Requirement.parse('crutch'), 'templates')
     jenv = jinja2.Environment(loader=jinja2.FileSystemLoader(templates))
@@ -74,7 +74,12 @@ class Driver(object):
     return renv, self.runners.get(renv.get_prop('project_type'))(renv)
 
   def run(self):
-    opts = Menu.get_parser().parse_args(self.argv[1:])
+    argv = self.argv[1:]
+    opts = None
+    if argv:
+      opts = Menu.get_parser().parse_args(self.argv[1:])
+    else:
+      opts = Menu.get_default_opts()
     renv, runner = self.create_runner(opts)
 
     # print renv.props.get_print_info()

@@ -147,6 +147,7 @@ class Runner(object):
     self.temp_manager = TemporaryFilesManager()
 
     self.dispatchers = {
+        'default':   self.default,
         'new':   self.create,
         'build': self.build,
         'clean': self.clean,
@@ -212,6 +213,10 @@ class Runner(object):
         with codecs.open(filename, 'w', 'utf-8') as out:
           out.write(tmpl.render())
 
+  def default(self):
+    self.build()
+    self.test()
+
   def create(self):
     self.init_project_folder()
 
@@ -220,6 +225,9 @@ class Runner(object):
 
   def clean(self):
     self.temp_manager.clean()
+
+  def test(self):
+    pass
 
   def info(self):
     print '[NOT IMPLEMENTED] {}.info'.format(self.__class__.__name__)

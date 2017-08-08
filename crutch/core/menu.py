@@ -24,8 +24,11 @@
 
 import argparse
 
-def get_parser():
+def get_default_opts():
+  return {'action': 'default', 'project_folder': '.', 'build_config': 'debug'}
 
+
+def get_parser():
   parser = argparse.ArgumentParser(
       prog='CRUTCH',
       description='Get a project running fast')
@@ -73,6 +76,15 @@ def get_parser():
   parser_clean = subparsers.add_parser('clean', help='Remove all temporary stuff')
 
   parser_clean.add_argument(
+      'project_folder', metavar='FOLDER', default='.',
+      nargs='?', help='Project folder(default=curcwd())')
+
+#------------------------------------------------------------------------------#
+# Test
+#------------------------------------------------------------------------------#
+  parser_test = subparsers.add_parser('test', help='Run tests')
+
+  parser_test.add_argument(
       'project_folder', metavar='FOLDER', default='.',
       nargs='?', help='Project folder(default=curcwd())')
 
