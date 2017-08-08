@@ -23,6 +23,7 @@
 import UserDict
 import codecs
 import json
+import os
 
 class FlatJSONConfig(UserDict.DictMixin):
 
@@ -82,6 +83,9 @@ class FlatJSONConfig(UserDict.DictMixin):
   def __contains__(self, key):
     return key in self.keys()
 
+  def items(self):
+    return [(key, self[key]) for key in self.keys()]
+
   def keys(self):
     return self.get_flat_keys(self.data, list())
 
@@ -131,9 +135,6 @@ class Properties(UserDict.DictMixin):
   def __contains__(self, key):
     return key in self.keys()
 
-  def __repr__(self):
-    return "Blah"
-
   def keys(self):
     result = list()
     for provider in self.providers:
@@ -162,3 +163,18 @@ class Properties(UserDict.DictMixin):
   def config_flush(self):
     assert isinstance(self.config, FlatJSONConfig)
     self.config.flush()
+
+  def get_print_info(self):
+    offset = os.linesep + ' '
+    dline = os.linesep + os.linesep
+
+    def format_dict(dic):
+      return offset.join(
+          ['{}: {}'.format(key, value) for key, value in dic.items()])
+
+    result = 'PROPERTIES' + dline
+    result += 'Stage:' + offset + format_dict(self.stage) + dline
+    result += 'CLI:' + offset + format_dict(self.cli) + dline
+    result += 'Config:' + offset + format_dict(self.config) + dline
+    result += 'Defaults:' + offset + format_dict(self.defaults) + dline
+    return result
