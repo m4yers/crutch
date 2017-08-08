@@ -46,7 +46,7 @@ def get_parser():
       nargs='?', help='Project folder(default=curcwd())')
 
   parser_create.add_argument(
-      '-n', '--name', metavar='NAME',
+      '-n', '--name', metavar='NAME', dest='project_name',
       help='Project name(default=basename(FOLDER))')
 
   parser_create.add_argument(

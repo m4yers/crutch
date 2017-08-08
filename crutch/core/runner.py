@@ -26,6 +26,9 @@ import sys
 import re
 import os
 
+from crutch.core.properties import Properties
+from crutch.core.replacements import Replacements
+
 RE_VERSION = re.compile(r'\d+\.\d+\.\d+')
 RE_DOT_HIDDEN = re.compile(r'.*/\..*$')
 RE_PROJECT_NAME = re.compile(r'project|ProjectName')
@@ -33,18 +36,81 @@ RE_JINJA_EXT = re.compile(r'\.(j2|jinja|jinja2)$')
 RE_JINJA_FILE = re.compile(r'.*\.(j2|jinja|jinja2)$')
 
 
+class RunnerEnvironment(object):
+  """
+  Object of this class holds all necessary utility to get runner run
+  """
+
+  def __init__(self, jenv, cli, config):
+    self.jenv = jenv
+    self.props = Properties(dict(), config, cli)
+    self.repl = Replacements()
+    self.prop_to_repl_mirror = self.repl.add_provider('prop_to_repl_mirror', dict())
+    self.current_jinja_globals = list()
+    self.features = None
+
+  def add_features(self, features):
+    self.features = features
+    self.repl.add_provider('features', features.get_repl_provider())
+
+  def get_stage_properties(self):
+    return self.props.stage
+
+  def get_default_properties(self):
+    return self.props.defaults
+
+  def get_prop(self, name):
+    return self.props[name]
+
+  def set_prop(self, name, value, mirror_to_config=False, mirror_to_repl=False):
+    self.props[name] = value
+    if mirror_to_config:
+      self.mirror_props_to_config([name])
+    if mirror_to_repl:
+      self.mirror_props_to_repl([name])
+
+  def config_load(self):
+    self.props.config_load()
+
+  def config_flush(self):
+    self.props.config_flush()
+
+  def mirror_props_to_config(self, properties):
+    for prop in properties:
+      self.props.config_update(prop, self.props[prop])
+
+  def mirror_props_to_repl(self, properties):
+    """
+    Copies every property in properties list from Properties container into
+    Replacements containers. This method does not perform cleanup, and won't
+    delete previously mirrored properties
+    """
+
+    for prop in properties:
+      self.prop_to_repl_mirror[prop] = self.props[prop]
+
+  def mirror_repl_to_jinja_globals(self):
+    """
+    Call this method before rendering any jenv template to populate the
+    current_jinja_globals object with the most recent replacements
+    """
+
+    # First, delete already existing current_jinja_globals
+    for glob in self.current_jinja_globals:
+      del self.jenv.current_jinja_globals[glob]
+
+    # Then, populate with fresh ones
+    self.repl.fetch()
+    self.jenv.globals.update(self.repl)
+
+
 class Runner(object):
   """Runner"""
 
-  def __init__(self, opts, env, repl, cfg, features):
-    self.opts = opts
-    self.env = env
-    self.repl = repl
-    self.cfg = cfg
+  def __init__(self, renv, features):
+    self.renv = renv
+    self.renv.add_features(features)
     self.features = features
-
-    self.parse_config()
-    self.init_project_features()
 
     self.dispatchers = {
         'new':   self.create,
@@ -53,37 +119,37 @@ class Runner(object):
         'info':  self.info
         }
 
+    self.init_project_features()
+
   def init_project_features(self):
-    project_features = self.opts.get('project_features') or \
-      self.repl.get('project_features') or 'default'
+    project_features = self.renv.get_prop('project_features') or 'default'
 
     if project_features != 'default':
       self.features.parse(project_features)
 
-    self.repl['project_features'] = ','.join(self.features.get_enabled_features())
-
-    for category in self.features.get_enabled_categories():
-      self.repl['project_has_feature_category_' + category] = True
-
-    for feature in self.features.get_enabled_features():
-      self.repl['project_has_feature_' + feature] = True
+    features = self.features.get_enabled_features()
+    self.renv.set_prop('project_features', features, mirror_to_config=True)
 
   def init_project_folder(self):
-    project_type = self.repl['project_type']
-    project_name = self.repl['project_name']
-    project_folder = self.repl['project_folder']
+    project_type = self.renv.get_prop('project_type')
+    project_name = self.renv.get_prop('project_name')
+    project_folder = self.renv.get_prop('project_folder')
 
     # Existing config file means a project already exists
-    if os.path.exists(self.repl.get('file_config')):
+    if os.path.exists(self.renv.get_prop('project_config')):
       print 'The "{}" project already exists. Exit.'.format(project_name)
       sys.exit(1)
 
-    feats = self.features.get_enabled_features()
-    folders = ['main'] + ['features' + os.path.sep + f for f in feats]
+    features = self.features.get_enabled_features()
+    folders = ['main'] + ['features' + os.path.sep + f for f in features]
+
+    jenv = self.renv.jenv
+
+    self.renv.mirror_repl_to_jinja_globals()
 
     for folder in folders:
       re_tmpl_prefix = re.compile(r'^' + project_type + os.path.sep + folder)
-      templates = filter(re_tmpl_prefix.match, self.env.list_templates())
+      templates = filter(re_tmpl_prefix.match, jenv.list_templates())
 
       for tmpl_src in templates:
         filename = re_tmpl_prefix.sub('', tmpl_src)
@@ -99,27 +165,18 @@ class Runner(object):
         if not os.path.exists(folder):
           os.makedirs(folder)
 
-        tmpl = self.env.get_template(tmpl_src)
+        tmpl = jenv.get_template(tmpl_src)
 
         # If the file is not a template just copy it
         if not RE_JINJA_FILE.match(filename):
           shutil.copyfile(tmpl.filename, filename)
           continue
 
-        # Drop .jinja extension
+        # Drop .jenv extension
         filename = RE_JINJA_EXT.sub('', filename)
 
         with codecs.open(filename, 'w', 'utf-8') as out:
           out.write(tmpl.render())
-
-  def parse_config(self):
-    if not self.cfg.has_section('project'):
-      return
-
-    self.repl['project_features'] = self.cfg.get('project', 'features').split(',')
-
-  def update_config(self):
-    pass
 
   def create(self):
     self.init_project_folder()
@@ -134,5 +191,5 @@ class Runner(object):
     print '[NOT IMPLEMENTED] Runner.info' + self
 
   def run(self):
-    action = self.opts.get('action')
+    action = self.renv.get_prop('action')
     self.dispatchers.get(action)()

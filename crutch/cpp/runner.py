@@ -30,27 +30,16 @@ from crutch.cpp.features import CPPFeatures
 class CPPRunner(Runner):
   """ C++ Runner """
 
-  def __init__(self, opts, env, repl, cfg):
-    super(CPPRunner, self).__init__(opts, env, repl, cfg, CPPFeatures())
-
-  def parse_config(self):
-    super(CPPRunner, self).parse_config()
-
-    if not self.cfg.has_section('cpp'):
-      return
-
-    self.repl['cpp_cmake'] = self.cfg.get('cpp', 'cmake')
-    self.repl['cpp_build'] = self.cfg.get('cpp', 'build')
-    self.repl['cpp_install'] = self.cfg.get('cpp', 'install')
-
-  def update_config(self):
-    super(CPPRunner, self).parse_config()
+  def __init__(self, renv):
+    super(CPPRunner, self).__init__(renv, CPPFeatures())
 
   def configure(self):
-    build_config = self.repl.get('build_config')
+    build_config = self.renv.get_prop('build_config')
+    project_folder = self.renv.get_prop('project_folder')
 
-    build_folder = self.repl['cpp_build']
-    install_folder = self.repl['cpp_install']
+
+    build_folder = os.path.join(project_folder, self.renv.get_prop('cpp_build'))
+    install_folder = os.path.join(project_folder, self.renv.get_prop('cpp_install'))
     if self.features.is_make():
       build_folder += os.path.sep + build_config
       install_folder += os.path.sep + build_config
@@ -64,8 +53,8 @@ class CPPRunner(Runner):
       crutch_build_type += cmake_build_type
 
     command = [
-        self.repl['cpp_cmake'],
-        '-H' + self.repl['project_folder'],
+        self.renv.get_prop('cpp_cmake'),
+        '-H' + self.renv.get_prop('project_folder'),
         '-B' + build_folder,
         '-G"' + generator + '"',
         '-DCRUTCH_BUILD_TYPE=' + crutch_build_type,
@@ -78,7 +67,7 @@ class CPPRunner(Runner):
   def init_project_folder(self):
     super(CPPRunner, self).init_project_folder()
 
-    project_folder = self.repl.get('project_folder')
+    project_folder = self.renv.get_prop('project_folder')
 
     if self.features.is_doxygen():
       doc_folder = os.path.join(project_folder, 'doc')
@@ -86,24 +75,22 @@ class CPPRunner(Runner):
       subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
   def create(self):
-    project_folder = self.repl['project_folder']
-
-    self.repl['cpp_build'] = os.path.join(project_folder, '_build')
-    self.repl['cpp_install'] = os.path.join(project_folder, '_install')
-    self.repl['cpp_cmake'] = 'cmake'
+    self.renv.set_prop('cpp_build', '_build', mirror_to_config=True)
+    self.renv.set_prop('cpp_install', '_install', mirror_to_config=True)
+    self.renv.set_prop('cpp_cmake', 'cmake', mirror_to_config=True)
 
     self.init_project_folder()
 
   def build(self):
     self.configure()
 
-    build_config = self.repl.get('build_config')
+    build_config = self.renv.get_prop('build_config')
+    build_folder = self.renv.get_prop('cpp_build')
 
-    build_folder = self.repl['cpp_build']
     if self.features.is_make():
       build_folder += os.path.sep + build_config
 
-    command = [self.repl['cpp_cmake'], \
+    command = [self.renv.get_prop('cpp_cmake'), \
         '--build', build_folder,       \
         '--config', build_config.capitalize()]
 

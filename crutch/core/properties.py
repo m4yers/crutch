@@ -170,11 +170,13 @@ class Properties(UserDict.DictMixin):
 
     def format_dict(dic):
       return offset.join(
-          ['{}: {}'.format(key, value) for key, value in dic.items()])
+          ['{}: {}'.format(key, value) for key, value in sorted(dic.items())])
 
     result = 'PROPERTIES' + dline
+
     result += 'Stage:' + offset + format_dict(self.stage) + dline
     result += 'CLI:' + offset + format_dict(self.cli) + dline
     result += 'Config:' + offset + format_dict(self.config) + dline
     result += 'Defaults:' + offset + format_dict(self.defaults) + dline
+
     return result

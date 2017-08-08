@@ -21,6 +21,7 @@
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import UserDict
+import os
 
 
 class GenerativeReplacementsProvider(UserDict.DictMixin):
@@ -51,6 +52,7 @@ class GenerativeReplacementsProvider(UserDict.DictMixin):
     return self.data
 
 
+
 class Replacements(UserDict.DictMixin):
   """
   Replacements is a container for replacments providers, it is used to fill in
@@ -65,9 +67,9 @@ class Replacements(UserDict.DictMixin):
   """
 
   def __init__(self):
-    self.static = list()
-    self.generators = list()
-    self.providers = list()
+    self.static = dict()
+    self.generators = dict()
+    self.providers = dict()
     self.data = dict()
 
   def __getitem__(self, key):
@@ -85,30 +87,54 @@ class Replacements(UserDict.DictMixin):
   def keys(self):
     return self.data.keys()
 
-  def add_static_provider(self, provider=None):
-    provider = provider or dict()
-    self.static.append(provider)
-    self.providers.append(provider)
-    return provider
-
-  def add_generative_provider(self, provider):
-    self.generators.append(provider)
-    self.providers.append(provider)
+  def add_provider(self, label, provider=None):
+    provider = provider if provider is not None else dict()
+    self.providers[label] = provider
+    if isinstance(provider, GenerativeReplacementsProvider):
+      self.generators[label] = provider
+    else:
+      self.static[label] = provider
     return provider
 
   def fetch(self):
     self.data = dict()
-    for provider in self.static:
+    for provider in self.static.values():
       for key in provider:
         if key in self.data:
           raise Exception("Key conflict")
         else:
           self.data[key] = provider[key]
 
-    for provider in self.generators:
+    for provider in self.generators.values():
       provider.generate()
       for key in provider:
         if key in self.data:
           raise Exception("Key conflict")
         else:
           self.data[key] = provider[key]
+
+  def get_print_info(self):
+    self.fetch()
+
+    def offset(lines, spaces=0):
+      return ''.join((os.linesep for _ in range(lines))) + ''.join((' ' for _ in range(spaces)))
+
+    def format_dict(dic):
+      return offset(1, 2).join(
+          ['{}: {}'.format(key, value) for key, value in sorted(dic.items())])
+
+    result = 'REPLACEMENTS' + offset(2)
+
+    result += 'Statics:' + offset(1, 1)
+    for label, provider in sorted(self.static.iteritems()):
+      result += offset(1, 1) + label + ':'
+      result += offset(1, 2) + format_dict(provider)
+      result += offset(2)
+
+    result += 'Generators:' + offset(1, 1)
+    for label, provider in sorted(self.generators.iteritems()):
+      result += offset(1, 1) + label + ':'
+      result += offset(1, 2) + format_dict(provider)
+      result += offset(2)
+
+    return result

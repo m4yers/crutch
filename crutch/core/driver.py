@@ -20,7 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import ConfigParser
 import sys
 import os
 
@@ -29,6 +28,8 @@ from pkg_resources import Requirement, resource_filename
 import jinja2
 
 import crutch.core.menu as Menu
+
+from crutch.core.runner import RunnerEnvironment
 
 class Driver(object):
 
@@ -42,32 +43,48 @@ class Driver(object):
     opts = vars(opts)
 
     templates = resource_filename(Requirement.parse('crutch'), 'templates')
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader(templates))
+    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader(templates))
 
     project_folder = os.path.abspath(opts.get('project_folder'))
 
-    repl = env.globals
-    repl.update(opts)
+    renv = RunnerEnvironment(jenv, opts, os.path.join(project_folder, '.crutch'))
 
-    repl['python'] = sys.executable
-    repl['project_folder'] = project_folder
-    repl['file_config'] = project_folder + '/.crutch'
+    defaults = renv.get_default_properties()
+    defaults['sys_user'] = os.getlogin()
+    defaults['sys_python'] = sys.executable
+    defaults['project_config'] = project_folder + '/.crutch'
+    defaults['project_folder'] = project_folder
 
-    cfg = ConfigParser.RawConfigParser()
+    stage = renv.get_stage_properties()
 
     if opts.get('action') == 'new':
-      repl['user'] = os.getlogin()
-      repl['project_type'] = opts.get('project_type')
-      repl['project_name'] = opts.get('project_name') or os.path.basename(project_folder)
+      stage['project_name'] = opts.get('project_name') or os.path.basename(project_folder)
+      stage['user_name'] = defaults['sys_user']
     else:
-      cfg.read(repl['file_config'])
-      repl['user'] = cfg.get('project', 'type')
-      repl['project_type'] = cfg.get('project', 'type')
-      repl['project_name'] = cfg.get('project', 'name')
+      renv.config_load()
 
-    return self.runners.get(repl['project_type'])(opts, env, repl, cfg)
+    renv.mirror_props_to_repl(stage.keys())
+    renv.mirror_props_to_config(stage.keys() + ['project_type'])
+
+    # print renv.props.get_print_info()
+    # print renv.repl.get_print_info()
+    # renv.config_flush()
+    # sys.exit(0)
+
+    return renv, self.runners.get(renv.get_prop('project_type'))(renv)
 
   def run(self):
     opts = Menu.get_parser().parse_args(self.argv[1:])
-    runner = self.create_runner(opts)
+    renv, runner = self.create_runner(opts)
+
+    # print renv.props.get_print_info()
+    # print renv.repl.get_print_info()
+    # renv.config_flush()
+    # sys.exit(0)
+
     runner.run()
+
+    # print renv.props.get_print_info()
+    # print renv.repl.get_print_info()
+
+    renv.config_flush()

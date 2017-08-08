@@ -31,10 +31,6 @@ class CPPFeatures(Features):
     self.add_category('documentation', ['doxygen'], [], only_one=True)
     self.add_category('testing', ['gtest'], ['gtest'], only_one=True)
 
-  def get_feature_one(self, category):
-    features = self.get_enabled_features(category)
-    return features[0] if features else ''
-
   def get_cmake_generator(self):
     return self.get_feature_one('cmake_generator')
 
