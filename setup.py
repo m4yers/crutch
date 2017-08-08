@@ -31,6 +31,7 @@ setup(
     url='https://github.com/m4yers/crutch',
     keywords='projects, bootstrap',
     install_requires=requirements(),
+    python_requires='>=2.6',
     package_data={
         'templates': ['*.*'],
     },
