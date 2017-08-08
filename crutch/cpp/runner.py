@@ -32,14 +32,26 @@ class CPPRunner(Runner):
 
   def __init__(self, renv):
     super(CPPRunner, self).__init__(renv, CPPFeatures())
+    if not self.renv.is_new():
+      self.temp_manager.add_directory(self.get_build_directory())
+      self.temp_manager.add_directory(self.get_install_directory())
+
+  def get_build_directory(self):
+    project_folder = self.renv.get_prop('project_folder')
+    return os.path.abspath(os.path.join(project_folder, self.renv.get_prop('cpp_build')))
+
+  def get_install_directory(self):
+    project_folder = self.renv.get_prop('project_folder')
+    return os.path.abspath(os.path.join(project_folder, self.renv.get_prop('cpp_install')))
+
+  def get_doc_directory(self):
+    project_folder = self.renv.get_prop('project_folder')
+    return os.path.abspath(os.path.join(project_folder, self.renv.get_prop('doc')))
 
   def configure(self):
     build_config = self.renv.get_prop('build_config')
-    project_folder = self.renv.get_prop('project_folder')
-
-
-    build_folder = os.path.join(project_folder, self.renv.get_prop('cpp_build'))
-    install_folder = os.path.join(project_folder, self.renv.get_prop('cpp_install'))
+    build_folder = self.get_build_directory()
+    install_folder = self.get_install_directory()
     if self.features.is_make():
       build_folder += os.path.sep + build_config
       install_folder += os.path.sep + build_config
@@ -67,11 +79,8 @@ class CPPRunner(Runner):
   def init_project_folder(self):
     super(CPPRunner, self).init_project_folder()
 
-    project_folder = self.renv.get_prop('project_folder')
-
     if self.features.is_doxygen():
-      doc_folder = os.path.join(project_folder, 'doc')
-      command = ['cd', doc_folder, '&&', 'doxygen', '-g', '-u', 'Doxyfile']
+      command = ['cd', self.get_doc_directory(), '&&', 'doxygen', '-g', '-u', 'Doxyfile']
       subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
   def create(self):
@@ -95,4 +104,3 @@ class CPPRunner(Runner):
         '--config', build_config.capitalize()]
 
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
-

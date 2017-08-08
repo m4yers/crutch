@@ -27,7 +27,7 @@ import argparse
 def get_parser():
 
   parser = argparse.ArgumentParser(
-      prog='Crutch',
+      prog='CRUTCH',
       description='Get a project running fast')
 
   subparsers = parser.add_subparsers(title='Actions', dest='action')
@@ -66,5 +66,14 @@ def get_parser():
       '-c', '--config', metavar='CONFIG',
       dest='build_config', default='debug', choices=['debug', 'release'],
       help='Select project config')
+
+#------------------------------------------------------------------------------#
+# Clean
+#------------------------------------------------------------------------------#
+  parser_clean = subparsers.add_parser('clean', help='Remove all temporary stuff')
+
+  parser_clean.add_argument(
+      'project_folder', metavar='FOLDER', default='.',
+      nargs='?', help='Project folder(default=curcwd())')
 
   return parser

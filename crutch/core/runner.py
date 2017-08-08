@@ -103,6 +103,39 @@ class RunnerEnvironment(object):
     self.repl.fetch()
     self.jenv.globals.update(self.repl)
 
+  def is_new(self):
+    return self.props['action'] == 'new'
+
+
+class TemporaryFilesManager(object):
+
+  def __init__(self):
+    self.files = list()
+    self.directories = list()
+
+  def add_file(self, path):
+    self.files.append(path)
+
+  def add_directory(self, path):
+    self.directories.append(path)
+
+  def clean(self):
+    did_something = False
+    for path in self.files:
+      if os.path.exists(path):
+        print "Deleting file '{}'".format(path)
+        os.remove(path)
+        did_something = True
+    for path in self.directories:
+      if os.path.exists(path):
+        print "Deleting directory '{}'".format(path)
+        shutil.rmtree(path)
+        did_something = True
+    if not did_something:
+      print "Nothing to clean here..."
+    else:
+      print "Done"
+
 
 class Runner(object):
   """Runner"""
@@ -111,6 +144,7 @@ class Runner(object):
     self.renv = renv
     self.renv.add_features(features)
     self.features = features
+    self.temp_manager = TemporaryFilesManager()
 
     self.dispatchers = {
         'new':   self.create,
@@ -182,13 +216,13 @@ class Runner(object):
     self.init_project_folder()
 
   def build(self):
-    print '[NOT IMPLEMENTED] Runner.build' + self
+    print '[NOT IMPLEMENTED] {}.build'.format(self.__class__.__name__)
 
   def clean(self):
-    print '[NOT IMPLEMENTED] Runner.clean' + self
+    self.temp_manager.clean()
 
   def info(self):
-    print '[NOT IMPLEMENTED] Runner.info' + self
+    print '[NOT IMPLEMENTED] {}.info'.format(self.__class__.__name__)
 
   def run(self):
     action = self.renv.get_prop('action')
