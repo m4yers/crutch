@@ -31,9 +31,20 @@ setup(
     url='https://github.com/m4yers/crutch',
     keywords='projects, bootstrap',
     install_requires=requirements(),
-    python_requires='>=2.6',
+    python_requires='>=2.6, <3',
     package_data={
         'templates': ['*.*'],
     },
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Environment :: Web Environment',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Build Tools',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+    ],
     entry_points={'console_scripts': ['crutch = crutch:main']},
 )

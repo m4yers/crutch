@@ -2,17 +2,25 @@
 CRUTCH
 ======
 
-.. image:: https://badge.fury.io/py/crutch.svg
-    :target: https://badge.fury.io/py/crutch
-    :alt: PyPi version
+.. image:: https://img.shields.io/pypi/status/crutch.svg
+   :target: https://pypi.python.org/pypi/crutch
+   :alt: PyPi Status
+
+.. image:: https://img.shields.io/pypi/v/crutch.svg
+   :target: https://pypi.python.org/pypi/crutch
+   :alt: PyPi Version
+
+.. image:: https://img.shields.io/pypi/pyversions/crutch.svg
+   :target: https://pypi.python.org/pypi/crutch
+   :alt: Python Versions
 
 .. image:: https://travis-ci.org/m4yers/crutch.svg?branch=master
-    :target: https://travis-ci.org/m4yers/crutch
-    :alt: Build status
+   :target: https://travis-ci.org/m4yers/crutch
+   :alt: Build Status
 
 .. image:: https://coveralls.io/repos/github/m4yers/crutch/badge.svg?branch=master
-    :target: https://coveralls.io/github/m4yers/crutch?branch=master
-    :alt: Test coverage
+   :target: https://coveralls.io/github/m4yers/crutch?branch=master
+   :alt: Test Coverage
 
 .. image:: https://landscape.io/github/m4yers/crutch/master/landscape.svg?style=flat
    :target: https://landscape.io/github/m4yers/crutch/master
