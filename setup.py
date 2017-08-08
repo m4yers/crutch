@@ -23,7 +23,7 @@ def readme():
 setup(
     name='crutch',
     version=version(),
-    description='Gets a project running quickly',
+    description='Get a project running quickly',
     long_description=readme(),
     license='MIT',
     author='Artyom Goncharov',
@@ -31,7 +31,7 @@ setup(
     url='https://github.com/m4yers/crutch',
     keywords='projects, bootstrap',
     install_requires=requirements(),
-    python_requires='>=2.6, <3',
+    python_requires='>=2.7, <3',
     package_data={
         'templates': ['*.*'],
     },
@@ -42,8 +42,6 @@ setup(
         'Topic :: Software Development :: Build Tools',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
     ],
     entry_points={'console_scripts': ['crutch = crutch:main']},
