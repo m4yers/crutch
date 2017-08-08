@@ -52,8 +52,12 @@ class Driver(object):
     defaults = renv.get_default_properties()
     defaults['sys_user'] = os.getlogin()
     defaults['sys_python'] = sys.executable
-    defaults['project_config'] = project_folder + '/.crutch'
+    defaults['project_config'] = os.path.join(project_folder, '.crutch')
     defaults['project_folder'] = project_folder
+
+    if opts.get('action') == 'default' and not os.path.exists(defaults['project_config']):
+      print "You cannot invoke default action on non-crutch folder. Exiting..."
+      sys.exit(1)
 
     stage = renv.get_stage_properties()
 
