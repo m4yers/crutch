@@ -139,6 +139,26 @@ class PropertiesConfigDataTest(unittest.TestCase):
     self.assertDictContainsSubset(DATA, self.props.config)
     self.assertDictContainsSubset(DATA, self.props)
 
+  @unittest.expectedFailure
+  def test_fail_config_push(self):
+    Properties(self.defaults, '', self.cli).config_push()
+
+  @unittest.expectedFailure
+  def test_fail_config_delete(self):
+    Properties(self.defaults, '', self.cli).config_delete('blah')
+
+  @unittest.expectedFailure
+  def test_fail_config_update(self):
+    Properties(self.defaults, '', self.cli).config_update('blah', 'blah')
+
+  @unittest.expectedFailure
+  def test_fail_config_load(self):
+    Properties(self.defaults, '', self.cli).config_load()
+
+  @unittest.expectedFailure
+  def test_fail_config_flush(self):
+    Properties(self.defaults, '', self.cli).config_flush()
+
   def test_config_flush(self):
     for key, value in DATA.items():
       self.props.config_update(key, value)
