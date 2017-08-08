@@ -19,7 +19,7 @@ class ReplacementsTest(unittest.TestCase):
     repl = Replacements()
     self.assertFalse(repl)
 
-    stat = repl.add_static_provider()
+    stat = repl.add_provider('provider', dict())
     stat['key'] = 'value'
     self.assertNotIn('key', repl)
 
@@ -42,7 +42,7 @@ class ReplacementsTest(unittest.TestCase):
     repl = Replacements()
 
     gen = dict()
-    gen = repl.add_generative_provider(GenerativeReplacementsProvider(gen))
+    gen = repl.add_provider('gen', GenerativeReplacementsProvider(gen))
     gen['key'] = 'value'
     self.assertNotIn('key', repl)
 
