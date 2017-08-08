@@ -45,6 +45,27 @@ class FlatJSONConfig(UserDict.DictMixin):
           raise KeyError(key)
     return last, curr
 
+  def get_flat_keys(self, current, collection, key=''):
+    if not isinstance(current, dict):
+      collection.append(key)
+      return collection
+
+    for name in current.keys():
+      self.get_flat_keys(current[name], collection, '_'.join([key, name]) if key else name)
+
+    return collection
+
+  def remove_empty(self, key):
+    path = key.split('_')
+    curr = self.data
+    for name in path[:-1]:
+      if name in curr:
+        if not curr[name]:
+          del curr[name]
+          return
+        else:
+          curr = curr[name]
+
   def __getitem__(self, key):
     name, obj = self.get_next_to_last(key)
     return obj[name]
@@ -56,9 +77,13 @@ class FlatJSONConfig(UserDict.DictMixin):
   def __delitem__(self, key):
     name, obj = self.get_next_to_last(key)
     del obj[name]
+    self.remove_empty(key)
+
+  def __contains__(self, key):
+    return key in self.keys()
 
   def keys(self):
-    return self.data.keys()
+    return self.get_flat_keys(self.data, list())
 
   def load(self):
     with codecs.open(self.filename, 'rU', 'utf-8') as fin:
@@ -103,11 +128,17 @@ class Properties(UserDict.DictMixin):
   def __delitem__(self, key):
     del self.stage[key]
 
+  def __contains__(self, key):
+    return key in self.keys()
+
+  def __repr__(self):
+    return "Blah"
+
   def keys(self):
-    result = dict()
-    for provider in reversed(self.providers):
-      result.update(provider)
-    return result
+    result = list()
+    for provider in self.providers:
+      result += provider.keys()
+    return list(set(result))
 
   def config_push(self, selected=None):
     assert isinstance(self.config, FlatJSONConfig)
@@ -119,6 +150,10 @@ class Properties(UserDict.DictMixin):
   def config_update(self, key, value):
     assert isinstance(self.config, FlatJSONConfig)
     self.config[key] = value
+
+  def config_delete(self, key):
+    assert isinstance(self.config, FlatJSONConfig)
+    del self.config[key]
 
   def config_load(self):
     assert isinstance(self.config, FlatJSONConfig)
