@@ -20,44 +20,49 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import codecs
 import shutil
-import sys
-import re
 import os
 
 from crutch.core.properties import Properties
 from crutch.core.replacements import Replacements
 
-RE_VERSION = re.compile(r'\d+\.\d+\.\d+')
-RE_DOT_HIDDEN = re.compile(r'.*/\..*$')
-RE_PROJECT_NAME = re.compile(r'project|ProjectName')
-RE_JINJA_EXT = re.compile(r'\.(j2|jinja|jinja2)$')
-RE_JINJA_FILE = re.compile(r'.*\.(j2|jinja|jinja2)$')
 
-
-class RunnerEnvironment(object):
+class RuntimeEnvironment(object):
   """
   Object of this class holds all necessary utility to get runner run
   """
 
-  def __init__(self, jenv, cli, config):
+  def __init__(self, menu, jenv):
+    self.menu = menu
     self.jenv = jenv
-    self.props = Properties(dict(), config, cli)
+    self.props = Properties()
     self.repl = Replacements()
     self.prop_to_repl_mirror = self.repl.add_provider('prop_to_repl_mirror', dict())
     self.current_jinja_globals = list()
-    self.features = None
 
-  def add_features(self, features):
-    self.features = features
-    self.repl.add_provider('features', features.get_repl_provider())
+  def update_properties(self, props):
+    self.props.update(props)
+
+  def update_cli_properties(self, props):
+    self.props.update_cli(props)
+
+  def update_config_properties(self, config):
+    self.props.update_config(config)
 
   def get_stage_properties(self):
     return self.props.stage
 
   def get_default_properties(self):
     return self.props.defaults
+
+  def get_run_feature(self):
+    return self.get_prop('run_feature')
+
+  def get_project_features(self):
+    return self.get_prop('project_features')
+
+  def get_project_directory(self):
+    return self.get_prop('project_directory')
 
   def get_prop(self, name):
     return self.props[name]
@@ -103,9 +108,6 @@ class RunnerEnvironment(object):
     self.repl.fetch()
     self.jenv.globals.update(self.repl)
 
-  def is_new(self):
-    return self.props['action'] == 'new'
-
 
 class TemporaryFilesManager(object):
 
@@ -137,101 +139,115 @@ class TemporaryFilesManager(object):
       print "Done"
 
 
-class Runner(object):
-  """Runner"""
+class Category(object):
 
-  def __init__(self, renv, features):
-    self.renv = renv
-    self.renv.add_features(features)
+  def __init__(self, name, init, features, defaults):
+    self.name = name
+    self.init = init
     self.features = features
-    self.temp_manager = TemporaryFilesManager()
+    self.defaults = defaults
 
-    self.dispatchers = {
-        'default':   self.default,
-        'new':   self.create,
-        'build': self.build,
-        'clean': self.clean,
-        'info':  self.info
-        }
 
-    self.init_project_features()
+class FeatureCtrl(object):
 
-  def init_project_features(self):
-    project_features = self.renv.get_prop('project_features') or 'default'
+  def __init__(self, renv):
+    self.renv = renv
+    self.categories = dict()
 
-    if project_features != 'default':
-      self.features.parse(project_features)
+    self.features = dict()
+    self.feature_to_category = dict()
 
-    features = self.features.get_enabled_features()
-    self.renv.set_prop('project_features', features, mirror_to_config=True)
+    self.active_categories = dict()
 
-  def init_project_folder(self):
-    project_type = self.renv.get_prop('project_type')
-    project_name = self.renv.get_prop('project_name')
-    project_folder = self.renv.get_prop('project_folder')
+  def __repr__(self):
+    result = 'FEATURE CTRL' + os.linesep + os.linesep
+    for cat_name, cat in self.categories.items():
+      result += ' '
+      if cat_name in self.active_categories:
+        result += '!'
+      result += cat_name + os.linesep + '['
+      for feat_name in cat.features:
+        result += feat_name + ' '
+      result += ']' + os.linesep
 
-    # Existing config file means a project already exists
-    if os.path.exists(self.renv.get_prop('project_config')):
-      print 'The "{}" project already exists. Exit.'.format(project_name)
-      sys.exit(1)
+    return result
 
-    features = self.features.get_enabled_features()
-    folders = ['main'] + ['features' + os.path.sep + f for f in features]
+  def register_feature_category_class(self, cat_name, cat_class, features, defaults=None):
+    self.categories[cat_name] = Category(cat_name, cat_class, features, defaults)
+    for feature in features:
+      self.feature_to_category[feature] = cat_name
 
-    jenv = self.renv.jenv
+  def register_feature_class(self, feat_name, feature_class):
+    self.features[feat_name] = feature_class
 
-    self.renv.mirror_repl_to_jinja_globals()
-
-    for folder in folders:
-      re_tmpl_prefix = re.compile(r'^' + project_type + os.path.sep + folder)
-      templates = filter(re_tmpl_prefix.match, jenv.list_templates())
-
-      for tmpl_src in templates:
-        filename = re_tmpl_prefix.sub('', tmpl_src)
-        filename = RE_PROJECT_NAME.sub(project_name, filename)
-        filename = project_folder + filename
-
-        # Do not override existing files
-        if os.path.exists(filename):
+  def activate(self):
+    renv = self.renv
+    project_features = renv.get_prop('project_features')
+    # If default configuration is requested all default features from every
+    # categoyr will be instantiated
+    if project_features == 'default':
+      project_features = list()
+      for cat_name, cat in self.categories.items():
+        if not cat.defaults:
+          print "HERE"
           continue
 
-        # Create the containing folder if does not exist already
-        folder = os.path.dirname(filename)
-        if not os.path.exists(folder):
-          os.makedirs(folder)
+        cat_instance = cat.init(
+            self.renv,
+            {name: self.features[name] for name in cat.features})
 
-        tmpl = jenv.get_template(tmpl_src)
+        # Do not add CRUTCH internal features
+        if cat_name != 'crutch':
+          project_features += cat.defaults
 
-        # If the file is not a template just copy it
-        if not RE_JINJA_FILE.match(filename):
-          shutil.copyfile(tmpl.filename, filename)
+        cat_instance.activate_features(cat.defaults)
+        self.active_categories[cat.name] = cat_instance
+
+      renv.set_prop('project_features', project_features, mirror_to_config=True)
+
+    # Otherwise instanciate only selected features and categories
+    elif project_features:
+      for feat_name, cat_name in self.feature_to_category.items():
+        if feat_name not in project_features:
           continue
 
-        # Drop .jenv extension
-        filename = RE_JINJA_EXT.sub('', filename)
+        cat_instance = self.active_categories.get(cat_name, None)
 
-        with codecs.open(filename, 'w', 'utf-8') as out:
-          out.write(tmpl.render())
+        if not cat_instance:
+          cat = self.categories[cat_name]
+          cat_instance = cat.init(
+              self.renv,
+              {name: self.features[name] for name in cat.features})
+          self.active_categories[cat_name] = cat_instance
 
-  def default(self):
-    self.build()
-    self.test()
+        cat_instance.activate_feature(feat_name)
+        self.active_categories[cat_name] = cat_instance
 
-  def create(self):
-    self.init_project_folder()
+  def invoke(self, action):
+    category = self.active_categories.get(action, None)
+    if category:
+      category.handle()
+      return
 
-  def build(self):
-    print '[NOT IMPLEMENTED] {}.build'.format(self.__class__.__name__)
+    cat_name = self.feature_to_category[action]
+    self.active_categories[cat_name].handle_feature(action)
 
-  def clean(self):
-    self.temp_manager.clean()
 
-  def test(self):
-    pass
+class Runner(object):
 
-  def info(self):
-    print '[NOT IMPLEMENTED] {}.info'.format(self.__class__.__name__)
+  def __init__(self, renv):
+    self.renv = renv
+    self.feature_ctrl = FeatureCtrl(renv)
+
+  def register_feature_category_class(self, *args, **kwargs):
+    self.feature_ctrl.register_feature_category_class(*args, **kwargs)
+
+  def register_feature_class(self, *args, **kwargs):
+    self.feature_ctrl.register_feature_class(*args, **kwargs)
 
   def run(self):
-    action = self.renv.get_prop('action')
-    self.dispatchers.get(action)()
+    renv = self.renv
+    # print self.feature_ctrl
+    # print self.__class__.__name__
+    self.feature_ctrl.activate()
+    self.feature_ctrl.invoke(renv.get_run_feature())

@@ -20,72 +20,91 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-""" Main parser setup"""
+"""
+This module wraps ArgumentParser ideomatically and allows to work with the tool
+menu in CRUTCH related terms and not just parsers and subparsers
+"""
 
 import argparse
 
-def get_default_opts():
-  return {'action': 'default', 'project_folder': '.', 'build_config': 'debug'}
+
+class Menu(object):
+
+  def __init__(self, *args, **kwargs):
+    self.parser = argparse.ArgumentParser(*args, **kwargs)
+    self.subparsers = self.parser.add_subparsers(title='Features', dest='run_feature')
+
+  def add_feature(self, name, desc, group_prefix='feature', prefix_with_name=True):
+    return MenuFeature(
+        group_prefix + ('_' + name if prefix_with_name else ''),
+        self.subparsers.add_parser(name, help=desc))
+
+  def print_help(self):
+    self.parser.print_help()
+
+  def parse(self, line):
+    return self.parser.parse_args(line)
 
 
-def get_parser():
-  parser = argparse.ArgumentParser(
-      prog='CRUTCH',
-      description='Get a project running fast')
+class MenuActions(object):
 
-  subparsers = parser.add_subparsers(title='Actions', dest='action')
+  def __init__(self, name, subparser):
+    self.subparser = subparser
+    self.name = name
 
-#------------------------------------------------------------------------------#
-# Create
-#------------------------------------------------------------------------------#
-  parser_create = subparsers.add_parser('new', help='Create new project')
+  def add_action(self, name, desc=''):
+    return MenuAction(self.name + '_' + name, self.subparser.add_parser(name, help=desc))
 
-  parser_create.add_argument(
-      'project_type', metavar='TYPE',
+
+class MenuAction(object):
+
+  def __init__(self, name, parser):
+    self.parser = parser
+    self.name = name
+
+  def add_argument(self, *args, **kwargs):
+    if 'dest' not in kwargs:
+      raise Exception("You must always provide `dest` parameter")
+    kwargs['dest'] = self.name + '_' + kwargs['dest']
+    self.parser.add_argument(*args, **kwargs)
+
+
+class MenuFeature(MenuAction):
+
+  def __init__(self, name, parser):
+    super(MenuFeature, self).__init__(name, parser)
+    self.parser.add_argument(
+        '-d', '--directory', dest='project_directory', default='.',
+        metavar='DIRECTORY', help='Target directory(default=curwd())')
+
+  def add_actions(self):
+    return MenuActions(self.name, self.parser.add_subparsers(title='Action', dest='action'))
+
+
+def create_crutch_menu():
+  """
+  Create the main start menu for CRUTCH, this menu creates `new` feature menu
+  explicitly since it must be available BEFORE runner is intialized and any
+  features are available. Further feature invocation will be performed basing
+  on config data
+  """
+  menu = Menu(prog='CRUTCH', description='Get a project running fast')
+
+  new = menu.add_feature('new', 'Create a project', group_prefix='project', prefix_with_name=False)
+
+  new.add_argument(
+      dest='type', metavar='TYPE',
       choices=['cpp', 'python'], help='Project type')
 
-  parser_create.add_argument(
-      'project_folder', metavar='FOLDER', default='.',
-      nargs='?', help='Project folder(default=curcwd())')
-
-  parser_create.add_argument(
-      '-n', '--name', metavar='NAME', dest='project_name',
+  new.add_argument(
+      '-n', '--name', metavar='NAME', dest='name',
       help='Project name(default=basename(FOLDER))')
 
-  parser_create.add_argument(
-      '-f', '--features', metavar='FEATURES', nargs='*',
-      dest='project_features', help='Select project features')
+  new.add_argument(
+      '-f', '--features', metavar='FEATURE', nargs='*', default='default',
+      dest='features', help='Select project features')
 
-#------------------------------------------------------------------------------#
-# Build
-#------------------------------------------------------------------------------#
-  parser_build = subparsers.add_parser('build', help='Build the project')
+  return menu
 
-  parser_build.add_argument(
-      'project_folder', metavar='FOLDER', default='.',
-      nargs='?', help='Project folder(default=curcwd())')
-
-  parser_build.add_argument(
-      '-c', '--config', metavar='CONFIG',
-      dest='build_config', default='debug', choices=['debug', 'release'],
-      help='Select project config')
-
-#------------------------------------------------------------------------------#
-# Clean
-#------------------------------------------------------------------------------#
-  parser_clean = subparsers.add_parser('clean', help='Remove all temporary stuff')
-
-  parser_clean.add_argument(
-      'project_folder', metavar='FOLDER', default='.',
-      nargs='?', help='Project folder(default=curcwd())')
-
-#------------------------------------------------------------------------------#
-# Test
-#------------------------------------------------------------------------------#
-  parser_test = subparsers.add_parser('test', help='Run tests')
-
-  parser_test.add_argument(
-      'project_folder', metavar='FOLDER', default='.',
-      nargs='?', help='Project folder(default=curcwd())')
-
-  return parser
+def get_default_crutch_opts():
+  return {'action': 'default', 'project_folder': '.'}

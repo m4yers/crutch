@@ -1,13 +1,13 @@
 import unittest
 
-from crutch.core.menu.menu import create_crutch_menu
+from crutch.core.menu import create_crutch_menu
+
 
 class MenuTest(unittest.TestCase):
 
   def test_feature(self):
     menu = create_crutch_menu()
     opts = menu.parse(['new', 'cpp', '-f', 'xcode'])
-    print vars(opts)
     expected = {'feature': 'new', 'project_type': 'cpp', 'project_features': ['xcode']}
     self.assertDictContainsSubset(expected, vars(opts))
 
@@ -37,15 +37,12 @@ class MenuTest(unittest.TestCase):
 
     opts = menu.parse(['build'])
     expected = {'feature': 'build', 'feature_build_config': None, 'project_directory': '.'}
-
     self.assertDictContainsSubset(expected, vars(opts))
 
     opts = menu.parse(['test', 'add', 'core/test'])
     expected = {'feature': 'test', 'action': 'add', 'feature_test_add_group': 'core/test'}
-
     self.assertDictContainsSubset(expected, vars(opts))
 
     opts = menu.parse(['file', 'add', 'core/feature'])
     expected = {'feature': 'file', 'action': 'add', 'feature_file_add_group': 'core/feature'}
-
     self.assertDictContainsSubset(expected, vars(opts))

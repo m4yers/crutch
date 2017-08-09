@@ -126,3 +126,100 @@ class Features(object):
 
   def get_enabled_categories(self):
     return self.parsed.keys()
+
+
+class Feature(object):
+
+  def __init__(self, renv):
+    self.renv = renv
+    self.dispatcher = {
+        'default': self.handle_default
+        }
+
+    self.register_actions(self.renv.menu)
+    self.register_files()
+    self.register_properties()
+    self.register_replacemets()
+
+  def register_actions(self, menu):
+    pass
+
+  def register_files(self):
+    """
+    Here you add your feature files and folders, so they can be removed if
+    a programmer decides to remove the feature. Also you may register any temp
+    files or directories so `clean` feature may remove them
+    """
+    pass
+
+  def register_properties(self):
+    pass
+
+  def register_replacemets(self):
+    pass
+
+  def register_handler(self, action, handler):
+    self.dispatcher[action] = handler
+
+  def handle_default(self):
+    print '{} default action is not set'.format(self.__class__.__name__)
+
+  def set_up(self):
+    """
+    Set up is called when a new feature is added during `new` invokation or
+    afterwards using `feature` feature
+    """
+    pass
+
+  def tear_down(self):
+    """
+    Tear down is called when a feature is removed by `feature` feature
+    """
+    pass
+
+  def handle(self):
+    """
+    This method is invoked to handle feature invokation
+    """
+    action = self.renv.get_prop('action')
+    self.dispatcher.get(action)()
+
+
+class FeatureCategory(Feature):
+
+  def __init__(self, renv, features):
+    super(FeatureCategory, self).__init__(renv)
+    self.features = features
+    self.active_features = dict()
+
+  def activate_features(self, feature_names):
+    map(self.activate_feature, feature_names)
+
+  def activate_feature(self, feature_name):
+    instance = self.features[feature_name](self.renv)
+    self.active_features[feature_name] = instance
+
+  def deactivate_feature(self, feature_name):
+    feature = self.active_features.get(feature_name, None)
+    if not feature:
+      raise Exception("You cannot deactivate non-active feature")
+    feature.tear_down()
+    del self.active_features[feature_name]
+
+  def set_up(self):
+    for feature in self.active_features.values():
+      feature.set_up()
+
+  def tear_down(self):
+    for feature in self.active_features.values():
+      feature.tear_down()
+
+  def handle(self):
+    for feature in self.active_features.values():
+      feature.handle()
+
+  def handle_feature(self, feature_name):
+    feature = self.active_features.get(feature_name, None)
+    if not feature:
+      raise Exception("You cannot handle non-active feature")
+    feature.handle()

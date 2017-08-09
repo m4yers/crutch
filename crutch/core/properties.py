@@ -27,9 +27,12 @@ import os
 
 class FlatJSONConfig(UserDict.DictMixin):
 
-  def __init__(self, filename):
+  def __init__(self, filename=None):
     self.filename = filename
     self.data = dict()
+
+  def set_filename(self, filename):
+    self.filename = filename
 
   def get_next_to_last(self, key, create=False):
     path = key.split('_')
@@ -90,8 +93,9 @@ class FlatJSONConfig(UserDict.DictMixin):
     return self.get_flat_keys(self.data, list())
 
   def load(self):
-    with codecs.open(self.filename, 'rU', 'utf-8') as fin:
-      self.data = json.load(fin)
+    if os.path.exists(self.filename):
+      with codecs.open(self.filename, 'rU', 'utf-8') as fin:
+        self.data = json.load(fin)
 
   def flush(self):
     with codecs.open(self.filename, 'wU', 'utf-8') as fout:
@@ -112,13 +116,19 @@ class Properties(UserDict.DictMixin):
   file requires calling explicit methods
   """
 
-  def __init__(self, defaults, config, cli):
-    self.defaults = defaults
-    self.config = FlatJSONConfig(config) if config else dict()
-    self.cli = cli
+  def __init__(self):
+    self.defaults = dict()
+    self.config = FlatJSONConfig()
+    self.cli = dict()
     self.stage = dict()
 
     self.providers = [self.stage, self.cli, self.config, self.defaults]
+
+  def update_cli(self, props):
+    self.cli.update(props)
+
+  def update_config(self, config):
+    self.config.set_filename(config)
 
   def __getitem__(self, key):
     for provider in self.providers:

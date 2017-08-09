@@ -106,3 +106,4 @@ class CPPRunner(Runner):
         '--config', build_config.capitalize()]
 
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
+
