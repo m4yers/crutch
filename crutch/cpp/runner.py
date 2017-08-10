@@ -21,7 +21,8 @@
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from crutch.core.runner import Runner
-from crutch.core.features import FeatureCategory
+
+from crutch.cpp.features.build import FeatureCategoryCppBuild
 from crutch.cpp.features.build import FeatureCppBuildMake, FeatureCppBuildXcode
 
 class RunnerCpp(Runner):
@@ -30,8 +31,10 @@ class RunnerCpp(Runner):
     super(RunnerCpp, self).__init__(renv)
     self.register_feature_category_class(
         'build',
-        FeatureCategory,
+        FeatureCategoryCppBuild,
         features=['make', 'xcode'],
         defaults=['make'])
     self.register_feature_class('make', FeatureCppBuildMake)
     self.register_feature_class('xcode', FeatureCppBuildXcode)
+
+    self.register_default_run_feature('build')

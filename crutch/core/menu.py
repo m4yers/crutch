@@ -107,4 +107,4 @@ def create_crutch_menu():
   return menu
 
 def get_default_crutch_opts():
-  return {'action': 'default', 'project_folder': '.'}
+  return {'action': 'default', 'project_directory': '.'}

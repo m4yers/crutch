@@ -40,10 +40,10 @@ class FeatureNew(Feature):
   def register_properties(self):
     renv = self.renv
 
-    project_directory = os.path.abspath(renv.get_prop('project_directory'))
+    project_directory = renv.get_prop('project_directory')
 
     renv.set_prop('user_name', renv.get_prop('os_login'), True, True)
-    renv.set_prop('project_directory', project_directory, mirror_to_repl=True)
+    renv.set_prop('project_type', renv.get_prop('project_type'), True, True)
     renv.set_prop(
         'project_name',
         renv.get_prop('project_name') or os.path.basename(project_directory), True, True)

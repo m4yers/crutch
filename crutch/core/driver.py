@@ -27,7 +27,7 @@ from pkg_resources import Requirement, resource_filename
 
 import jinja2
 
-from crutch.core.menu import create_crutch_menu, get_default_crutch_opts
+from crutch.core.menu import create_crutch_menu
 
 from crutch.core.runner import RuntimeEnvironment
 
@@ -54,9 +54,29 @@ class Driver(object):
 
     return renv
 
-  def handle_no_args(self):
-    get_default_crutch_opts()
-    return 0
+  def handle_no_args(self, renv):
+    # Before we parse anything we need to load current config
+    project_directory = os.path.abspath('.')
+    project_config = os.path.join(project_directory, '.crutch')
+    renv.set_prop('project_directory', project_directory)
+    renv.set_prop('project_config', project_config)
+
+    if not os.path.exists(project_config):
+      print "You cannot invoke default CRUTCH action on non-initialized directory"
+      sys.exit(1)
+
+    # Current config gives us project type, and this type gives us default
+    # feature and action to run
+    renv.update_config_filename(project_config)
+    renv.config_load()
+
+    runner = self.runners.get(renv.get_prop('project_type'))(renv)
+    runner.activate_features()
+
+    opts = renv.menu.parse([runner.default_run_feature])
+    renv.update_cli_properties(vars(opts))
+
+    return runner
 
   def handle_new(self, renv):
     opts = renv.menu.parse(renv.get_prop('sys_argv'))
@@ -69,7 +89,7 @@ class Driver(object):
       print "You cannot invoke `new` on already existing CRUTCH directory"
       sys.exit(1)
 
-    renv.update_config_properties(project_config)
+    renv.update_config_filename(project_config)
 
     return self.runners.get('new')(renv)
 
@@ -92,7 +112,7 @@ class Driver(object):
 
     runner = None
     if not argv:
-      runner = self.handle_no_args()
+      runner = self.handle_no_args(renv)
     elif argv[0] == 'new':
       runner = self.handle_new(renv)
     else:
@@ -104,10 +124,11 @@ class Driver(object):
 
     # print renv.props.get_print_info()
     # print renv.repl.get_print_info()
+    # sys.exit(0)
 
     runner.run()
 
-    print renv.props.get_print_info()
-    print renv.repl.get_print_info()
+    # print renv.props.get_print_info()
+    # print renv.repl.get_print_info()
 
     renv.config_flush()

@@ -47,7 +47,7 @@ class RuntimeEnvironment(object):
   def update_cli_properties(self, props):
     self.props.update_cli(props)
 
-  def update_config_properties(self, config):
+  def update_config_filename(self, config):
     self.props.update_config(config)
 
   def get_stage_properties(self):
@@ -225,14 +225,14 @@ class FeatureCtrl(object):
         cat_instance.activate_feature(feat_name)
         self.active_categories[cat_name] = cat_instance
 
-  def invoke(self, action):
-    category = self.active_categories.get(action, None)
+  def invoke(self, feature):
+    category = self.active_categories.get(feature, None)
     if category:
       category.handle()
       return
 
-    cat_name = self.feature_to_category[action]
-    self.active_categories[cat_name].handle_feature(action)
+    cat_name = self.feature_to_category[feature]
+    self.active_categories[cat_name].handle()
 
 
 class Runner(object):
@@ -240,6 +240,10 @@ class Runner(object):
   def __init__(self, renv):
     self.renv = renv
     self.feature_ctrl = FeatureCtrl(renv)
+    self.default_run_feature = None
+
+  def register_default_run_feature(self, name):
+    self.default_run_feature = name
 
   def register_feature_category_class(self, *args, **kwargs):
     self.feature_ctrl.register_feature_category_class(*args, **kwargs)
@@ -256,4 +260,4 @@ class Runner(object):
   def run(self):
     renv = self.renv
     self.activate_features()
-    self.invoke_feature(renv.get_run_feature())
+    self.invoke_feature(renv.get_run_feature() or self.default_run_feature)
