@@ -61,7 +61,7 @@ things going. The default project configuration supposed to provide you with
 things necessary to just start writing stuff, but if you need more you can add
 features to your projects.
 
-Features
+Features(MOST OF THIS STUFF IS STILL TODO)
 -------------
 
 Feature is something that extends CRUTCH capabilities and specifically adds
