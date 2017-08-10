@@ -54,14 +54,20 @@ class FeatureNew(Feature):
 
   def handle(self):
     renv = self.renv
+    jenv = renv.jenv
 
     project_type = renv.get_prop('project_type')
     project_name = renv.get_prop('project_name')
     project_directory = renv.get_prop('project_directory')
 
-    folders = ['main'] + ['features' + os.path.sep + f for f in renv.get_project_features()]
+    # We need to activate features for the current project type, since we are
+    # already within a `new` feature runner we create type specific runner
+    # explicitly and activate its features `manually`. This activation will
+    # usually lead to creation of new feature specific replacements used by
+    # jinja template render
+    renv.runners.get(project_type)(renv).activate_features()
 
-    jenv = renv.jenv
+    folders = ['main'] + ['features' + os.path.sep + f for f in renv.get_project_features()]
 
     renv.mirror_repl_to_jinja_globals()
 
@@ -107,3 +113,23 @@ class RunnerNew(Runner):
         features=['new'],
         defaults=['new'])
     self.register_feature_class('new', FeatureNew)
+
+  def run(self):
+    """
+    Before we run anything we save all the features passed from cli and replace
+    them with simple 'default' value so the feature-ctrl will initialize `new`
+    the way we need
+    """
+    saved_features = self.renv.get_prop('project_features')
+    self.renv.set_prop('project_features', 'default')
+
+    #---------------------------
+    renv = self.renv
+    self.activate_features()
+    #---------------------------
+
+    self.renv.set_prop('project_features', saved_features)
+
+    #---------------------------
+    self.invoke_feature(renv.get_run_feature())
+    #---------------------------

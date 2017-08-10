@@ -32,9 +32,10 @@ class RuntimeEnvironment(object):
   Object of this class holds all necessary utility to get runner run
   """
 
-  def __init__(self, menu, jenv):
+  def __init__(self, menu, jenv, runners):
     self.menu = menu
     self.jenv = jenv
+    self.runners = runners
     self.props = Properties()
     self.repl = Replacements()
     self.prop_to_repl_mirror = self.repl.add_provider('prop_to_repl_mirror', dict())
@@ -73,6 +74,10 @@ class RuntimeEnvironment(object):
       self.mirror_props_to_config([name])
     if mirror_to_repl:
       self.mirror_props_to_repl([name])
+
+  def set_prop_if_not_in(self, name, value, mirror_to_config=False, mirror_to_repl=False):
+    if name not in self.props:
+      self.set_prop(name, value, mirror_to_config, mirror_to_repl)
 
   def config_load(self):
     self.props.config_load()
@@ -189,16 +194,13 @@ class FeatureCtrl(object):
       project_features = list()
       for cat_name, cat in self.categories.items():
         if not cat.defaults:
-          print "HERE"
           continue
 
         cat_instance = cat.init(
             self.renv,
             {name: self.features[name] for name in cat.features})
 
-        # Do not add CRUTCH internal features
-        if cat_name != 'crutch':
-          project_features += cat.defaults
+        project_features += cat.defaults
 
         cat_instance.activate_features(cat.defaults)
         self.active_categories[cat.name] = cat_instance
@@ -245,9 +247,13 @@ class Runner(object):
   def register_feature_class(self, *args, **kwargs):
     self.feature_ctrl.register_feature_class(*args, **kwargs)
 
+  def activate_features(self):
+    self.feature_ctrl.activate()
+
+  def invoke_feature(self, name):
+    self.feature_ctrl.invoke(name)
+
   def run(self):
     renv = self.renv
-    # print self.feature_ctrl
-    # print self.__class__.__name__
-    self.feature_ctrl.activate()
-    self.feature_ctrl.invoke(renv.get_run_feature())
+    self.activate_features()
+    self.invoke_feature(renv.get_run_feature())

@@ -43,7 +43,7 @@ class Driver(object):
     templates = resource_filename(Requirement.parse('crutch'), 'templates')
     jenv = jinja2.Environment(loader=jinja2.FileSystemLoader(templates))
 
-    renv = RuntimeEnvironment(menu, jenv)
+    renv = RuntimeEnvironment(menu, jenv, self.runners)
 
     defaults = renv.get_default_properties()
     defaults['os_login'] = os.getlogin()
@@ -55,7 +55,7 @@ class Driver(object):
     return renv
 
   def handle_no_args(self):
-    # opts = get_default_crutch_opts()
+    get_default_crutch_opts()
     return 0
 
   def handle_new(self, renv):
@@ -102,8 +102,8 @@ class Driver(object):
     #   print "You cannot invoke default action on non-crutch folder. Exiting..."
     #   sys.exit(1)
 
-    print renv.props.get_print_info()
-    print renv.repl.get_print_info()
+    # print renv.props.get_print_info()
+    # print renv.repl.get_print_info()
 
     runner.run()
 

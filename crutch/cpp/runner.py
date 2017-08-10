@@ -20,90 +20,18 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import subprocess
-import os
-
 from crutch.core.runner import Runner
-from crutch.cpp.features import CPPFeatures
+from crutch.core.features import FeatureCategory
+from crutch.cpp.features.build import FeatureCppBuildMake, FeatureCppBuildXcode
 
-
-class CPPRunner(Runner):
-  """ C++ Runner """
+class RunnerCpp(Runner):
 
   def __init__(self, renv):
-    super(CPPRunner, self).__init__(renv, CPPFeatures())
-    if not self.renv.is_new():
-      self.temp_manager.add_directory(self.get_build_directory())
-      self.temp_manager.add_directory(self.get_install_directory())
-
-  def get_build_directory(self):
-    project_folder = self.renv.get_prop('project_folder')
-    return os.path.abspath(os.path.join(project_folder, self.renv.get_prop('cpp_build')))
-
-  def get_install_directory(self):
-    project_folder = self.renv.get_prop('project_folder')
-    return os.path.abspath(os.path.join(project_folder, self.renv.get_prop('cpp_install')))
-
-  def get_doc_directory(self):
-    project_folder = self.renv.get_prop('project_folder')
-    return os.path.abspath(os.path.join(project_folder, self.renv.get_prop('doc')))
-
-  def configure(self):
-    build_config = self.renv.get_prop('build_config')
-    build_folder = self.get_build_directory()
-    install_folder = self.get_install_directory()
-    if self.features.is_make():
-      build_folder += os.path.sep + build_config
-      install_folder += os.path.sep + build_config
-
-    generators = {'xcode': 'Xcode', 'make': 'Unix Makefiles'}
-    generator = generators.get(self.features.get_cmake_generator())
-
-    cmake_build_type = build_config.capitalize()
-    crutch_build_type = ''
-    if self.features.is_xcode():
-      crutch_build_type += cmake_build_type
-
-    command = [
-        self.renv.get_prop('cpp_cmake'),
-        '-H' + self.renv.get_prop('project_folder'),
-        '-B' + build_folder,
-        '-G"' + generator + '"',
-        '-DCRUTCH_BUILD_TYPE=' + crutch_build_type,
-        '-DCMAKE_BUILD_TYPE=' + cmake_build_type,
-        '-DCMAKE_INSTALL_PREFIX=' + install_folder
-        ]
-
-    subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
-
-  def init_project_folder(self):
-    super(CPPRunner, self).init_project_folder()
-
-    if self.features.is_doxygen():
-      command = ['cd', self.get_doc_directory(), '&&', 'doxygen', '-g', '-u', 'Doxyfile']
-      subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
-
-  def create(self):
-    self.renv.set_prop('cpp_build', '_build', mirror_to_config=True)
-    self.renv.set_prop('cpp_install', '_install', mirror_to_config=True)
-    self.renv.set_prop('cpp_cmake', 'cmake', mirror_to_config=True)
-
-    self.init_project_folder()
-
-  def build(self):
-    build_config = self.renv.get_prop('build_config')
-    build_folder = self.renv.get_prop('cpp_build')
-
-    # If not build folder we need to configure cmake first
-    if not os.path.exists(build_folder):
-      self.configure()
-
-    if self.features.is_make():
-      build_folder += os.path.sep + build_config
-
-    command = [self.renv.get_prop('cpp_cmake'), \
-        '--build', build_folder,       \
-        '--config', build_config.capitalize()]
-
-    subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
-
+    super(RunnerCpp, self).__init__(renv)
+    self.register_feature_category_class(
+        'build',
+        FeatureCategory,
+        features=['make', 'xcode'],
+        defaults=['make'])
+    self.register_feature_class('make', FeatureCppBuildMake)
+    self.register_feature_class('xcode', FeatureCppBuildXcode)

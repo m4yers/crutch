@@ -30,11 +30,11 @@ from crutch.core.driver import Driver
 from crutch.core.runner import Runner
 
 from crutch.core.new import RunnerNew
+from crutch.cpp.runner import RunnerCpp
 
 class Runners(object):
 
   def __init__(self, runners):
-    super(Runners, self).__init__()
     self.runners = runners
 
   def get(self, kind):
@@ -42,4 +42,4 @@ class Runners(object):
 
 
 def main():
-  Driver(Runners({'new': RunnerNew})).run()
+  Driver(Runners({'new': RunnerNew, 'cpp': RunnerCpp})).run()
