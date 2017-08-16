@@ -52,6 +52,9 @@ class MenuActions(object):
     self.subparser = subparser
     self.name = name
 
+  def add_default(self, desc=''):
+    return self.add_action('default', desc)
+
   def add_action(self, name, desc=''):
     return MenuAction(self.name + '_' + name, self.subparser.add_parser(name, help=desc))
 

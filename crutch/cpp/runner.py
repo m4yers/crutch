@@ -25,10 +25,14 @@ from crutch.core.runner import Runner
 from crutch.cpp.features.build import FeatureCategoryCppBuild
 from crutch.cpp.features.build import FeatureCppBuildMake, FeatureCppBuildXcode
 
+from crutch.cpp.features.test import FeatureCategoryCppTest
+from crutch.cpp.features.test import FeatureCppTestGTest
+
 class RunnerCpp(Runner):
 
   def __init__(self, renv):
     super(RunnerCpp, self).__init__(renv)
+
     self.register_feature_category_class(
         'build',
         FeatureCategoryCppBuild,
@@ -36,5 +40,13 @@ class RunnerCpp(Runner):
         defaults=['make'])
     self.register_feature_class('make', FeatureCppBuildMake)
     self.register_feature_class('xcode', FeatureCppBuildXcode)
+
+    self.register_feature_category_class(
+        'test',
+        FeatureCategoryCppTest,
+        features=['gtest'],
+        defaults=['gtest'],
+        requires=['build'])
+    self.register_feature_class('gtest', FeatureCppTestGTest)
 
     self.register_default_run_feature('build')

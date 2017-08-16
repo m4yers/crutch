@@ -109,7 +109,7 @@ class FeatureCategory(Feature):
     for feature in self.active_features.values():
       feature.tear_down()
 
-  def handle(self):
+  def handle_features(self):
     for feature in self.active_features.values():
       feature.handle()
 

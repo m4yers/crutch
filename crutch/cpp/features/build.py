@@ -55,9 +55,7 @@ class FeatureCppBuild(FeatureCategoryCppBuild):
 
   def __init__(self, renv, name, generator):
     self.generator = generator
-    self.build_directory_option = 'feature_{}_directory'.format(name)
-    self.build_config_option = 'feature_{}_config'.format(name)
-    super(FeatureCppBuild, self).__init__(renv, name)
+    super(FeatureCppBuild, self).__init__(renv, None, name)
 
   def get_build_directory_suffix(self):
     """
@@ -101,7 +99,6 @@ class FeatureCppBuild(FeatureCategoryCppBuild):
         '--build', build_directory,       \
         '--config', build_config.capitalize()]
 
-    print command
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
 

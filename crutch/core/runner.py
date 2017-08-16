@@ -23,6 +23,8 @@
 import shutil
 import os
 
+import networkx as nx
+
 from crutch.core.properties import Properties
 from crutch.core.replacements import Replacements
 
@@ -146,11 +148,20 @@ class TemporaryFilesManager(object):
 
 class Category(object):
 
-  def __init__(self, name, init, features, defaults):
+  def __init__(self, name, init, features, defaults, requires):
     self.name = name
     self.init = init
-    self.features = features
-    self.defaults = defaults
+    self.features = features or list()
+    self.defaults = defaults or list()
+    self.requires = requires or list()
+
+
+class Feature(object):
+
+  def __init__(self, name, init, requires):
+    self.name = name
+    self.init = init
+    self.requires = requires or list()
 
 
 class FeatureCtrl(object):
@@ -177,62 +188,98 @@ class FeatureCtrl(object):
 
     return result
 
-  def register_feature_category_class(self, cat_name, cat_class, features, defaults=None):
-    self.categories[cat_name] = Category(cat_name, cat_class, features, defaults)
-    for feature in features:
-      self.feature_to_category[feature] = cat_name
+  def register_feature_category_class(self, cat_name, cat_class, features,\
+      defaults=None, requires=None):
+    self.categories[cat_name] = Category(cat_name, cat_class, features, defaults, requires)
+    for feat_name in features:
+      self.feature_to_category[feat_name] = cat_name
 
-  def register_feature_class(self, feat_name, feature_class):
-    self.features[feat_name] = feature_class
+  def register_feature_class(self, feat_name, feature_class, requires=None):
+    self.features[feat_name] = Feature(feat_name, feature_class, requires)
+
+  def add_category_dependency(self, graph, cat_name, req):
+    req_cat_name = None
+    if req in self.categories:
+      req_cat_name = req
+    elif req in self.features:
+      req_cat_name = self.feature_to_category[req]
+    else:
+      raise Exception('Requirement {} is not provided'.format(req))
+    graph.add_edge(req_cat_name, cat_name)
+
+
+  def get_init_order(self):
+    """
+    Validate whether dependency graph is correct and can be used to instantiate
+    all the categories and features
+    """
+    renv = self.renv
+    project_features = renv.get_prop('project_features')
+
+    # Find out the category instantiation order
+    graph = nx.DiGraph()
+    categories = list()
+    if project_features == 'default':
+      for cat_name, cat in self.categories.items():
+        if cat.defaults:
+          categories.append(cat_name)
+    elif project_features:
+      for feat_name in project_features:
+        categories.append(self.feature_to_category[feat_name])
+
+    graph.add_nodes_from(categories)
+    for cat_name in categories:
+      cat = self.categories[cat_name]
+
+      # Add dependencies of the category itself
+      for req in cat.requires:
+        self.add_category_dependency(graph, cat_name, req)
+
+      # Add dependencies of the category's features
+      for feat_def_name in cat.defaults:
+        for req in self.features[feat_def_name].requires:
+          self.add_category_dependency(graph, cat_name, req)
+
+    cat_order = list(reversed(list(nx.dfs_postorder_nodes(graph))))
+
+    # Collect all features in category instantiation order
+    feat_order = list()
+    if project_features == 'default':
+      for cat_name in cat_order:
+        cat = self.categories[cat_name]
+        if cat.defaults:
+          feat_order.extend(cat.defaults)
+    elif project_features:
+      for cat_name in cat_order:
+        cat = self.categories[cat_name]
+        for feat_name in cat.features:
+          if feat_name in project_features:
+            feat_order.append(feat_name)
+
+    return cat_order, feat_order
 
   def activate(self):
     renv = self.renv
-    project_features = renv.get_prop('project_features')
-    # If default configuration is requested all default features from every
-    # categoyr will be instantiated
-    if project_features == 'default':
-      project_features = list()
-      for cat_name, cat in self.categories.items():
-        if not cat.defaults:
-          continue
+    cat_order, feat_order = self.get_init_order()
 
-        cat_instance = cat.init(
-            self.renv,
-            {name: self.features[name] for name in cat.features})
+    for cat_name in cat_order:
+      cat = self.categories[cat_name]
+      cat_instance = cat.init(
+          renv,
+          {n: self.features[n].init for n in cat.features})
+      cat_instance.activate_features([f for f in feat_order if f in cat.features])
+      self.active_categories[cat_name] = cat_instance
 
-        project_features += cat.defaults
-
-        cat_instance.activate_features(cat.defaults)
-        self.active_categories[cat.name] = cat_instance
-
-      renv.set_prop('project_features', project_features, mirror_to_config=True)
-
-    # Otherwise instanciate only selected features and categories
-    elif project_features:
-      for feat_name, cat_name in self.feature_to_category.items():
-        if feat_name not in project_features:
-          continue
-
-        cat_instance = self.active_categories.get(cat_name, None)
-
-        if not cat_instance:
-          cat = self.categories[cat_name]
-          cat_instance = cat.init(
-              self.renv,
-              {name: self.features[name] for name in cat.features})
-          self.active_categories[cat_name] = cat_instance
-
-        cat_instance.activate_feature(feat_name)
-        self.active_categories[cat_name] = cat_instance
+    renv.set_prop('project_features', feat_order, mirror_to_config=True)
 
   def invoke(self, feature):
     category = self.active_categories.get(feature, None)
     if category:
-      category.handle()
+      category.handle_features()
       return
 
     cat_name = self.feature_to_category[feature]
-    self.active_categories[cat_name].handle()
+    self.active_categories[cat_name].handle_feature(feature)
 
 
 class Runner(object):

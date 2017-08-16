@@ -54,6 +54,21 @@ class Driver(object):
 
     return renv
 
+  def handle_new(self, renv):
+    opts = renv.menu.parse(renv.get_prop('sys_argv'))
+    renv.update_cli_properties(vars(opts))
+
+    project_directory = renv.get_project_directory()
+    project_config = os.path.join(project_directory, '.crutch')
+
+    if os.path.exists(project_config):
+      print "You cannot invoke `new` on already existing CRUTCH directory"
+      sys.exit(1)
+
+    renv.update_config_filename(project_config)
+
+    return self.runners.get('new')(renv)
+
   def handle_no_args(self, renv):
     # Before we parse anything we need to load current config
     project_directory = os.path.abspath('.')
@@ -78,23 +93,30 @@ class Driver(object):
 
     return runner
 
-  def handle_new(self, renv):
+  def handle_normal(self, renv):
+    # Before we parse anything we need to load current config
+    project_directory = os.path.abspath('.')
+    project_config = os.path.join(project_directory, '.crutch')
+    renv.set_prop('project_directory', project_directory)
+    renv.set_prop('project_config', project_config)
+
+    if not os.path.exists(project_config):
+      print "You cannot invoke default CRUTCH action on non-initialized directory"
+      sys.exit(1)
+
+    # Current config gives us project type, and this type gives us default
+    # feature and action to run
+    renv.update_config_filename(project_config)
+    renv.config_load()
+
+    runner = self.runners.get(renv.get_prop('project_type'))(renv)
+    runner.activate_features()
+
     opts = renv.menu.parse(renv.get_prop('sys_argv'))
     renv.update_cli_properties(vars(opts))
 
-    project_directory = renv.get_project_directory()
-    project_config = os.path.join(project_directory, '.crutch')
+    return runner
 
-    if os.path.exists(project_config):
-      print "You cannot invoke `new` on already existing CRUTCH directory"
-      sys.exit(1)
-
-    renv.update_config_filename(project_config)
-
-    return self.runners.get('new')(renv)
-
-  def handle_normal(self):
-    return 0
 
   def run(self):
     menu = create_crutch_menu()
@@ -116,7 +138,7 @@ class Driver(object):
     elif argv[0] == 'new':
       runner = self.handle_new(renv)
     else:
-      runner = self.handle_normal()
+      runner = self.handle_normal(renv)
 
     # if renv.get_action() == 'default' and not os.path.exists(renv.get_prop('project_config')):
     #   print "You cannot invoke default action on non-crutch folder. Exiting..."
