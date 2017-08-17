@@ -9,7 +9,7 @@ include_directories (${CMAKE_SOURCE_DIR}/include)
 
 add_subdirectory(src)
 
-{% if project_has_feature_category_testing %}
+{% if project_feature_category_test %}
 enable_testing()
-add_subdirectory(test)
+add_subdirectory(test {{ feature_test_directory }})
 {% endif %}

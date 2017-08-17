@@ -33,7 +33,6 @@ class Feature(object):
     self.register_actions(self.renv.menu)
     self.register_files()
     self.register_properties()
-    self.register_replacemets()
 
   def register_actions(self, menu):
     pass
@@ -49,9 +48,6 @@ class Feature(object):
   def register_properties(self):
     project_directory = os.path.abspath(self.renv.get_prop('project_directory'))
     self.renv.set_prop('project_directory', project_directory, mirror_to_repl=True)
-
-  def register_replacemets(self):
-    pass
 
   def register_handler(self, action, handler):
     self.dispatcher[action] = handler
@@ -100,6 +96,12 @@ class FeatureCategory(Feature):
       raise Exception("You cannot deactivate non-active feature")
     feature.tear_down()
     del self.active_features[feature_name]
+
+  def get_active_feature_names(self):
+    return self.active_features.keys()
+
+  def get_active_features(self):
+    return self.active_features.values()
 
   def set_up(self):
     for feature in self.active_features.values():

@@ -33,4 +33,7 @@ include_directories(
   "${source_dir}/googletest/include"
   "${source_dir}/googlemock/include")
 
-add_subdirectory({{ project_name }})
+
+# WARNING, everything after this comment is controlled by CRUTCH,
+# please DO NOT change anything here
+add_subdirectory({{ project_name }} {{ feature_test_tests_directory }}/{{ project_name }})

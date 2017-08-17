@@ -21,9 +21,8 @@
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import shutil
+import sys
 import os
-
-from collections import deque
 
 import networkx as nx
 
@@ -70,11 +69,14 @@ class RuntimeEnvironment(object):
   def get_project_features(self):
     return self.get_prop('project_features')
 
+  def get_crutch_directory(self):
+    return self.get_prop('crutch_directory')
+
   def get_project_directory(self):
     return self.get_prop('project_directory')
 
-  def get_prop(self, name):
-    return self.props[name]
+  def get_prop(self, name, default=None):
+    return self.props.get(name, default)
 
   def set_prop(self, name, value, mirror_to_config=False, mirror_to_repl=False):
     self.props[name] = value
@@ -154,12 +156,13 @@ class TemporaryFilesManager(object):
 
 class Category(object):
 
-  def __init__(self, name, init, features, defaults, requires):
+  def __init__(self, name, init, features, defaults, requires, singular):
     self.name = name
     self.init = init
     self.features = features or list()
     self.defaults = defaults or list()
     self.requires = requires or list()
+    self.singular = singular
 
 
 class Feature(object):
@@ -195,85 +198,114 @@ class FeatureCtrl(object):
     return result
 
   def register_feature_category_class(self, cat_name, cat_class, features,\
-      defaults=None, requires=None):
-    self.categories[cat_name] = Category(cat_name, cat_class, features, defaults, requires)
+      defaults=None, requires=None, singular=True):
+    self.categories[cat_name] = \
+        Category(cat_name, cat_class, features, defaults, requires, singular)
     for feat_name in features:
       self.feature_to_category[feat_name] = cat_name
 
-  def register_feature_class(self, feat_name, feature_class, requires=None):
-    self.features[feat_name] = Feature(feat_name, feature_class, requires)
+  def register_feature_class(self, feat_name, feature_class):
+    self.features[feat_name] = Feature(feat_name, feature_class, None)
 
-  def add_category_dependency(self, graph, cat_name, req):
+  def is_category(self, name):
+    return name in self.categories
+
+  def is_feature(self, name):
+    return name in self.features
+
+  def get_category_and_features(self, req):
     req_cat_name = None
+    req_cat_feat = list()
 
-    if req in self.categories:
+    if self.is_category(req):
       req_cat_name = req
-    elif req in self.features:
+      req_cat_feat.extend(self.categories[req].defaults)
+    elif self.is_feature(req):
       req_cat_name = self.feature_to_category[req]
+      req_cat_feat.append(req)
     else:
       raise Exception('Requirement {} is not provided'.format(req))
 
-    graph.add_edge(req_cat_name, cat_name)
+    return req_cat_name, req_cat_feat
 
-    return req_cat_name
+  def normalize_project_features(self):
+    project_features = self.renv.get_prop('project_features')
 
-  def get_init_order(self):
-    """
-    Validate whether dependency graph is correct and can be used to instantiate
-    all the categories and features
-    """
-    renv = self.renv
-    project_features = renv.get_prop('project_features')
+    result = dict()
 
-    # Find out the category instantiation order
-    graph = nx.DiGraph()
-    categories = deque()
     if project_features == 'default':
       for cat_name, cat in self.categories.items():
         if cat.defaults:
-          categories.append(cat_name)
-    elif project_features:
-      for feat_name in project_features:
-        categories.append(self.feature_to_category[feat_name])
+          result[cat_name] = cat.defaults
 
-    graph.add_nodes_from(categories)
-    processed = set()
-    while categories:
-      cat_name = categories.popleft()
+    elif project_features:
+
+      for name in project_features:
+
+        if self.is_category(name):
+          if name in result:
+            raise Exception('You must not pass features while using general category')
+          result[name] = self.categories[name].defaults
+
+        elif self.is_feature(name):
+          cat_name = self.feature_to_category[name]
+          cat = self.categories[cat_name]
+          if cat_name in result and cat.singular:
+            raise Exception('You cannot pass multiple features for a singular category')
+          features = result.get(cat_name, list())
+          features.append(name)
+          result[cat_name] = features
+
+    return result
+
+  def build_dependency_graph(self, cat_to_feats):
+    cat_queue = cat_to_feats.keys()
+    graph = nx.DiGraph()
+    graph.add_nodes_from(cat_queue)
+    marked = set()
+    while cat_queue:
+      cat_name = cat_queue.pop()
 
       # This is a circular dependency
-      if cat_name in processed:
+      if cat_name in marked:
         continue
 
-      processed.add(cat_name)
+      marked.add(cat_name)
       cat = self.categories[cat_name]
 
-      # Add dependencies of the category itself
+      # Add dependencies for the category itself
       for req in cat.requires:
-        req = self.add_category_dependency(graph, cat_name, req)
-        categories.append(req)
+        if self.is_category(req):
+          req_cat_name = req
+          # If required category is not already in the graph, add it and queue
+          # it for the next cycle to process
+          if not req_cat_name in cat_to_feats:
+            graph.add_edge(req_cat_name, cat_name)
+            cat = self.categories[req_cat_name]
+            cat_to_feats[req_cat_name] = cat.defaults
+            cat_queue.append(req_cat_name)
 
-      # Add dependencies of the category's features
-      for feat_def_name in cat.defaults:
-        for req in self.features[feat_def_name].requires:
-          req = self.add_category_dependency(graph, cat_name, req)
-          categories.append(req)
+    return graph, cat_to_feats
 
-    cat_order = list(reversed(list(nx.dfs_postorder_nodes(graph))))
+  def get_init_order(self):
+    """
+    Build category and feature instantiation order
+    """
+    cat_to_feats = self.normalize_project_features()
+    graph, cat_to_feats = self.build_dependency_graph(cat_to_feats)
+
+    # If not DAG we cannot build graph's topology
+    if not nx.is_directed_acyclic_graph(graph):
+      print 'Features you have provided form a circular dependency:'
+      print list(nx.find_cycle(graph, orientation='ignore'))
+      sys.exit(1)
+
+    cat_order = list(nx.topological_sort(graph))
 
     # Collect all features in category instantiation order
     feat_order = list()
-    if project_features == 'default':
-      for cat_name in cat_order:
-        cat = self.categories[cat_name]
-        if cat.defaults:
-          feat_order.extend(cat.defaults)
-    elif project_features:
-      for cat_name in cat_order:
-        cat = self.categories[cat_name]
-        for feat_name in cat.features:
-          if feat_name in project_features:
-            feat_order.append(feat_name)
+    for cat_name in cat_order:
+      feat_order.extend(cat_to_feats[cat_name])
 
     return cat_order, feat_order
 

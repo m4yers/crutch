@@ -59,30 +59,38 @@ class Driver(object):
     renv.update_cli_properties(vars(opts))
 
     project_directory = renv.get_project_directory()
-    project_config = os.path.join(project_directory, '.crutch')
+    crutch_directory = os.path.join(project_directory, '.crutch')
+    crutch_config = os.path.join(project_directory, '.crutch.json')
+    renv.set_prop('project_directory', project_directory)
+    renv.set_prop('crutch_directory', crutch_directory)
+    renv.set_prop('crutch_config', crutch_config)
 
-    if os.path.exists(project_config):
+    if os.path.exists(crutch_directory):
       print "You cannot invoke `new` on already existing CRUTCH directory"
       sys.exit(1)
 
-    renv.update_config_filename(project_config)
+    os.makedirs(crutch_directory)
+
+    renv.update_config_filename(crutch_config)
 
     return self.runners.get('new')(renv)
 
   def handle_no_args(self, renv):
     # Before we parse anything we need to load current config
     project_directory = os.path.abspath('.')
-    project_config = os.path.join(project_directory, '.crutch')
+    crutch_directory = os.path.join(project_directory, '.crutch')
+    crutch_config = os.path.join(project_directory, '.crutch.json')
     renv.set_prop('project_directory', project_directory)
-    renv.set_prop('project_config', project_config)
+    renv.set_prop('crutch_directory', crutch_directory)
+    renv.set_prop('crutch_config', crutch_config)
 
-    if not os.path.exists(project_config):
+    if not os.path.exists(crutch_config):
       print "You cannot invoke default CRUTCH action on non-initialized directory"
       sys.exit(1)
 
     # Current config gives us project type, and this type gives us default
     # feature and action to run
-    renv.update_config_filename(project_config)
+    renv.update_config_filename(crutch_config)
     renv.config_load()
 
     runner = self.runners.get(renv.get_prop('project_type'))(renv)
@@ -96,17 +104,19 @@ class Driver(object):
   def handle_normal(self, renv):
     # Before we parse anything we need to load current config
     project_directory = os.path.abspath('.')
-    project_config = os.path.join(project_directory, '.crutch')
+    crutch_directory = os.path.join(project_directory, '.crutch')
+    crutch_config = os.path.join(project_directory, '.crutch.json')
     renv.set_prop('project_directory', project_directory)
-    renv.set_prop('project_config', project_config)
+    renv.set_prop('crutch_directory', crutch_directory)
+    renv.set_prop('crutch_config', crutch_config)
 
-    if not os.path.exists(project_config):
+    if not os.path.exists(crutch_config):
       print "You cannot invoke default CRUTCH action on non-initialized directory"
       sys.exit(1)
 
     # Current config gives us project type, and this type gives us default
     # feature and action to run
-    renv.update_config_filename(project_config)
+    renv.update_config_filename(crutch_config)
     renv.config_load()
 
     runner = self.runners.get(renv.get_prop('project_type'))(renv)
@@ -140,7 +150,7 @@ class Driver(object):
     else:
       runner = self.handle_normal(renv)
 
-    # if renv.get_action() == 'default' and not os.path.exists(renv.get_prop('project_config')):
+    # if renv.get_action() == 'default' and not os.path.exists(renv.get_prop('crutch_config')):
     #   print "You cannot invoke default action on non-crutch folder. Exiting..."
     #   sys.exit(1)
 
