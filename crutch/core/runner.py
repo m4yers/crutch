@@ -23,6 +23,8 @@
 import shutil
 import os
 
+from collections import deque
+
 import networkx as nx
 
 from crutch.core.properties import Properties
@@ -42,6 +44,10 @@ class RuntimeEnvironment(object):
     self.repl = Replacements()
     self.prop_to_repl_mirror = self.repl.add_provider('prop_to_repl_mirror', dict())
     self.current_jinja_globals = list()
+    self.feature_ctrl = None
+
+  def set_feature_ctrl(self, ctrl):
+    self.feature_ctrl = ctrl
 
   def update_properties(self, props):
     self.props.update(props)
@@ -199,14 +205,17 @@ class FeatureCtrl(object):
 
   def add_category_dependency(self, graph, cat_name, req):
     req_cat_name = None
+
     if req in self.categories:
       req_cat_name = req
     elif req in self.features:
       req_cat_name = self.feature_to_category[req]
     else:
       raise Exception('Requirement {} is not provided'.format(req))
+
     graph.add_edge(req_cat_name, cat_name)
 
+    return req_cat_name
 
   def get_init_order(self):
     """
@@ -218,7 +227,7 @@ class FeatureCtrl(object):
 
     # Find out the category instantiation order
     graph = nx.DiGraph()
-    categories = list()
+    categories = deque()
     if project_features == 'default':
       for cat_name, cat in self.categories.items():
         if cat.defaults:
@@ -228,17 +237,27 @@ class FeatureCtrl(object):
         categories.append(self.feature_to_category[feat_name])
 
     graph.add_nodes_from(categories)
-    for cat_name in categories:
+    processed = set()
+    while categories:
+      cat_name = categories.popleft()
+
+      # This is a circular dependency
+      if cat_name in processed:
+        continue
+
+      processed.add(cat_name)
       cat = self.categories[cat_name]
 
       # Add dependencies of the category itself
       for req in cat.requires:
-        self.add_category_dependency(graph, cat_name, req)
+        req = self.add_category_dependency(graph, cat_name, req)
+        categories.append(req)
 
       # Add dependencies of the category's features
       for feat_def_name in cat.defaults:
         for req in self.features[feat_def_name].requires:
-          self.add_category_dependency(graph, cat_name, req)
+          req = self.add_category_dependency(graph, cat_name, req)
+          categories.append(req)
 
     cat_order = list(reversed(list(nx.dfs_postorder_nodes(graph))))
 
@@ -267,8 +286,13 @@ class FeatureCtrl(object):
       cat_instance = cat.init(
           renv,
           {n: self.features[n].init for n in cat.features})
-      cat_instance.activate_features([f for f in feat_order if f in cat.features])
+      cat_active_features = [f for f in feat_order if f in cat.features]
+      cat_instance.activate_features(cat_active_features)
       self.active_categories[cat_name] = cat_instance
+
+      renv.set_prop('project_feature_category_' + cat_name, True, mirror_to_repl=True)
+      for feat_name in cat_active_features:
+        renv.set_prop('project_feature_' + feat_name, True, mirror_to_repl=True)
 
     renv.set_prop('project_features', feat_order, mirror_to_config=True)
 
@@ -281,6 +305,10 @@ class FeatureCtrl(object):
     cat_name = self.feature_to_category[feature]
     self.active_categories[cat_name].handle_feature(feature)
 
+  def get_active_category(self, name):
+    assert name in self.active_categories
+    return self.active_categories[name]
+
 
 class Runner(object):
 
@@ -288,6 +316,8 @@ class Runner(object):
     self.renv = renv
     self.feature_ctrl = FeatureCtrl(renv)
     self.default_run_feature = None
+
+    self.renv.set_feature_ctrl(self.feature_ctrl)
 
   def register_default_run_feature(self, name):
     self.default_run_feature = name
