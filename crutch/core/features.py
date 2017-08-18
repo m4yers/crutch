@@ -22,55 +22,47 @@
 
 import os
 
+
 class FeatureMenu(object):
+  """
+  FeatureMenu defines methods for assembling feature and feature category menus
+  to be exposed to CRUTCH users
+  """
 
   def __init__(self, renv, name, desc):
-    self.menu = renv.menu.add_feature(\
-        name, desc, group_prefix='feature_' + name, prefix_with_name=False)
+    self.name = name
+    self.menu = renv.menu.add_feature(name, desc)
     self.actions = self.menu.add_actions()
+    self.handlers = dict()
 
-  def add_action(self, name, desc):
+  def add_action(self, name, desc, handler):
+    self.handlers[name] = handler
     return self.actions.add_action(name, desc)
 
-  def add_default_action(self, desc):
-    return self.actions.add_default(desc)
+  def add_default_action(self, desc, handler):
+    return self.add_action('default', desc, handler)
 
-class Feature(object):
+
+class FeatureProto(object):
+  """
+  FeatureProto defines base behaviour of CRUTCH features and feature categories.
+  This class defines method for menu registering, tear up/down and handling for
+  handling basic feature requests
+  """
 
   def __init__(self, renv):
     self.renv = renv
-    self.dispatcher = {
-        'default': self.handle_default
-        }
+    self.menu = self.register_menu()
 
-    self.register_actions()
-    self.register_files()
-    self.register_properties()
-
-  def register_actions(self):
-    pass
-
-  def register_files(self):
+  def register_menu(self):
     """
-    Here you add your feature files and folders, so they can be removed if
-    a programmer decides to remove the feature. Also you may register any temp
-    files or directories so `clean` feature may remove them
+    Here you create and return feature's menu actions if any
     """
     pass
-
-  def register_properties(self):
-    project_directory = os.path.abspath(self.renv.get_prop('project_directory'))
-    self.renv.set_prop('project_directory', project_directory, mirror_to_repl=True)
-
-  def register_handler(self, action, handler):
-    self.dispatcher[action] = handler
-
-  def handle_default(self):
-    print '{} default action is not set'.format(self.__class__.__name__)
 
   def set_up(self):
     """
-    Set up is called when a new feature is added during `new` invokation or
+    Set up is called when a new feature is added during `new` invocation or
     afterwards using `feature` feature
     """
     pass
@@ -82,14 +74,46 @@ class Feature(object):
     pass
 
   def handle(self):
+    pass
+
+
+class Feature(FeatureProto):
+  """
+  Feature is something that defines and performs very narrow set of actions that
+  cannot be split further
+  """
+
+  def __init__(self, renv):
+    super(Feature, self).__init__(renv)
+    self.register_properties()
+    self.register_files()
+
+  def register_files(self):
     """
-    This method is invoked to handle feature invokation
+    Here you add your feature files and folders, so they can be removed if
+    a programmer decides to remove the feature. Also you may register any temp
+    files or directories so `clean` feature may remove them
     """
+    pass
+
+  def register_properties(self):
+    """
+    Here you define/save all you properties to be mirrored to config or repl
+    """
+    project_directory = os.path.abspath(self.renv.get_prop('project_directory'))
+    self.renv.set_prop('project_directory', project_directory, mirror_to_repl=True)
+
+  def handle(self):
     action = self.renv.get_prop('action')
-    self.dispatcher.get(action)()
+    self.menu.handlers.get(action)()
 
 
-class FeatureCategory(Feature):
+class FeatureCategory(FeatureProto):
+  """
+  Feature category collects(usually) several features under a single name and
+  can act as an interface for them exposing a common menu set. Every feature
+  can be called separately as well.
+  """
 
   def __init__(self, renv, features):
     super(FeatureCategory, self).__init__(renv)
@@ -124,7 +148,7 @@ class FeatureCategory(Feature):
     for feature in self.active_features.values():
       feature.tear_down()
 
-  def handle_features(self):
+  def handle(self):
     for feature in self.active_features.values():
       feature.handle()
 
@@ -133,3 +157,9 @@ class FeatureCategory(Feature):
     if not feature:
       raise Exception("You cannot handle non-active feature")
     feature.handle()
+
+def create_simple_feature_category(menu):
+  class SimpleFeatureCategoryWithMenu(FeatureCategory):
+    def register_menu(self):
+      return menu(self.renv)
+  return SimpleFeatureCategoryWithMenu

@@ -14,10 +14,14 @@ ExternalProject_Get_Property(gtest source_dir binary_dir)
 # Create a libgtest target to be used as a dependency by test programs
 add_library(libgtest IMPORTED STATIC GLOBAL)
 add_dependencies(libgtest gtest)
-
+{% if project_feature_xcode %}
+set(SUFFIX ${CMAKE_BUILD_TYPE})
+{% else %}
+set(SUFFIX "")
+{% endif %}
 # Set libgtest properties
 set_target_properties(libgtest PROPERTIES
-  "IMPORTED_LOCATION" "${binary_dir}/googlemock/gtest/${CRUTCH_BUILD_TYPE}/libgtest.a"
+  "IMPORTED_LOCATION" "${binary_dir}/googlemock/gtest/${SUFFIX}/libgtest.a"
   "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}")
 
 # Create a libgmock target to be used as a dependency by test programs
@@ -26,14 +30,27 @@ add_dependencies(libgmock gtest)
 
 # Set libgmock properties
 set_target_properties(libgmock PROPERTIES
-  "IMPORTED_LOCATION" "${binary_dir}/googlemock/${CRUTCH_BUILD_TYPE}/libgmock.a"
+  "IMPORTED_LOCATION" "${binary_dir}/googlemock/${SUFFIX}/libgmock.a"
   "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}")
 
 include_directories(
   "${source_dir}/googletest/include"
   "${source_dir}/googlemock/include")
 
+# Add all the tests in the folder
+macro(get_subdirlist result curdir)
+  file(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  set(dirlist "")
+  foreach(child ${children})
+    if(IS_DIRECTORY ${curdir}/${child})
+      list(APPEND dirlist ${child})
+    endif()
+  endforeach()
+  set(${result} ${dirlist})
+endmacro()
 
-# WARNING, everything after this comment is controlled by CRUTCH,
-# please DO NOT change anything here
-add_subdirectory({{ project_name }})
+get_subdirlist(TEST_SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
+
+foreach(test ${TEST_SUBDIRS})
+  add_subdirectory(${test})
+endforeach()

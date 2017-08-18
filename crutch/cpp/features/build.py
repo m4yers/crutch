@@ -23,42 +23,55 @@
 import subprocess
 import os
 
-from crutch.core.features import FeatureCategory, FeatureMenu
+from crutch.core.features import create_simple_feature_category
+from crutch.core.features import Feature, FeatureMenu
+
 
 NAME = 'build'
 PROP_CMK = 'feature_build_cmake'
-OPT_CFG = 'feature_build_default_config'
+OPT_CFG = 'feature_build_config'
 
-class FeatureCategoryCppBuild(FeatureCategory):
 
-  def __init__(self, renv, features, name=NAME):
-    self.name = name
-    super(FeatureCategoryCppBuild, self).__init__(renv, features)
+class FeatureMenuCppBuild(FeatureMenu):
 
-  def register_properties(self):
-    renv = self.renv
-    renv.set_prop_if_not_in(PROP_CMK, 'cmake', mirror_to_config=True)
-
-  def register_actions(self):
-    menu = FeatureMenu(self.renv, self.name, 'Build C++ project')
-
-    default = menu.add_default_action('Build project')
+  def __init__(self, renv, name=NAME, handler_default=None):
+    super(FeatureMenuCppBuild, self).__init__(renv, name, 'Build C++ Project')
+    default = self.add_default_action('Build project', handler_default)
     default.add_argument(
-        '-c', '--config', dest='config', metavar='CONFIG',
+        '-c', '--config', dest=OPT_CFG, metavar='CONFIG',
         default='debug', choices=['debug', 'release'],
         help='Select project config')
+
+
+FeatureCategoryCppBuild = create_simple_feature_category(FeatureMenuCppBuild)
+
+
+class FeatureCppBuild(Feature):
+
+  def __init__(self, renv, name, generator, suffix=''):
+    self.name = name
+    self.generator = generator
+    self.suffix = suffix
+    super(FeatureCppBuild, self).__init__(renv)
+
+  def register_menu(self):
+    return FeatureMenuCppBuild(self.renv, self.name, self.action_build)
+
+  def register_properties(self):
+    super(FeatureCppBuild, self).register_properties()
+    self.renv.set_prop_if_not_in(PROP_CMK, 'cmake', mirror_to_config=True)
+
+#-SUPPORT-----------------------------------------------------------------------
+
+  def is_make(self):
+    return self.__class__ == FeatureCppBuildMake
+
+  def is_xcode(self):
+    return self.__class__ == FeatureCppBuildXcode
 
   def get_build_directory(self, suffix=None):
     crutch_directory = self.renv.get_crutch_directory()
     return os.path.abspath(os.path.join(crutch_directory, NAME, suffix))
-
-
-class FeatureCppBuild(FeatureCategoryCppBuild):
-
-  def __init__(self, renv, name, generator, suffix=''):
-    self.generator = generator
-    self.suffix = suffix
-    super(FeatureCppBuild, self).__init__(renv, None, name)
 
   def configure(self, build_directory, config):
     command = [
@@ -70,18 +83,9 @@ class FeatureCppBuild(FeatureCategoryCppBuild):
 
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
-  def build(self):
-    build_directory = self.get_build_directory(self.suffix)
-    build_config = self.renv.get_prop(OPT_CFG)
+#-ACTIONS-----------------------------------------------------------------------
 
-    command = [self.renv.get_prop(PROP_CMK),  \
-        '--build', build_directory,                        \
-        '--target', 'main',                                \
-        '--config', build_config.capitalize()]
-
-    subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
-
-  def handle(self):
+  def action_build(self):
     build_directory = self.get_build_directory(self.suffix)
     build_config = self.renv.get_prop(OPT_CFG)
 
@@ -89,7 +93,12 @@ class FeatureCppBuild(FeatureCategoryCppBuild):
     if not os.path.exists(build_directory):
       self.configure(build_directory, build_config)
 
-    self.build()
+    command = [self.renv.get_prop(PROP_CMK),               \
+        '--build', build_directory,                        \
+        '--target', 'main',                                \
+        '--config', build_config.capitalize()]
+
+    subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
 
 class FeatureCppBuildMake(FeatureCppBuild):

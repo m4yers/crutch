@@ -38,6 +38,7 @@ from crutch.core.runner import Runner
 class FeatureNew(Feature):
 
   def register_properties(self):
+    super(FeatureNew, self).register_properties()
     renv = self.renv
 
     project_directory = renv.get_prop('project_directory')

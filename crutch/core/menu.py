@@ -36,10 +36,8 @@ class Menu(object):
     self.subparsers = self.parser.add_subparsers(title='Features', dest='run_feature')
     self.features = dict()
 
-  def add_feature(self, name, desc, group_prefix='feature', prefix_with_name=True):
-    feature = MenuFeature(
-        group_prefix + ('_' + name if prefix_with_name else ''),
-        self.subparsers.add_parser(name, help=desc))
+  def add_feature(self, name, desc):
+    feature = MenuFeature(name, self.subparsers.add_parser(name, help=desc))
     self.features[name] = feature
     return feature
 
@@ -74,11 +72,8 @@ class MenuActions(object):
     self.name = name
     self.actions = dict()
 
-  def add_default(self, desc=''):
-    return self.add_action('default', desc)
-
   def add_action(self, name, desc=''):
-    action = MenuAction(self.name + '_' + name, self.subparser.add_parser(name, help=desc))
+    action = MenuAction(name, self.subparser.add_parser(name, help=desc))
     self.actions[name] = action
     return action
 
@@ -93,9 +88,6 @@ class MenuAction(object):
     self.name = name
 
   def add_argument(self, *args, **kwargs):
-    if 'dest' not in kwargs:
-      raise Exception("You must always provide `dest` parameter")
-    kwargs['dest'] = self.name + '_' + kwargs['dest']
     self.parser.add_argument(*args, **kwargs)
 
 
@@ -127,19 +119,19 @@ def create_crutch_menu():
   """
   menu = Menu(prog='CRUTCH', description='Get a project running fast')
 
-  new = menu.add_feature('new', 'Create a project', group_prefix='project', prefix_with_name=False)
+  new = menu.add_feature('new', 'Create a project')
 
   new.add_argument(
-      dest='type', metavar='TYPE',
+      dest='project_type', metavar='TYPE',
       choices=['cpp', 'python'], help='Project type')
 
   new.add_argument(
-      '-n', '--name', metavar='NAME', dest='name',
+      '-n', '--name', metavar='NAME', dest='project_name',
       help='Project name(default=basename(FOLDER))')
 
   new.add_argument(
       '-f', '--features', metavar='FEATURE', nargs='*', default='default',
-      dest='features', help='Select project features')
+      dest='project_features', help='Select project features')
 
   return menu
 

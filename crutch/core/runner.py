@@ -331,7 +331,7 @@ class FeatureCtrl(object):
   def invoke(self, feature):
     category = self.active_categories.get(feature, None)
     if category:
-      category.handle_features()
+      category.handle()
       return
 
     cat_name = self.feature_to_category[feature]
