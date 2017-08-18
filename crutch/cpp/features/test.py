@@ -23,13 +23,11 @@
 import subprocess
 import os
 
-from crutch.core.features import FeatureCategory
+from crutch.core.features import FeatureCategory, FeatureMenu
 
 import crutch.cpp.features.build as Build
 
 NAME = 'test'
-PROP_DIR = 'feature_test_directory'
-PROP_TESTS = 'feature_test_tests_directory'
 OPT_CFG = 'feature_test_default_config'
 
 class FeatureCategoryCppTest(FeatureCategory):
@@ -37,6 +35,18 @@ class FeatureCategoryCppTest(FeatureCategory):
   def __init__(self, renv, features, name=NAME):
     self.name = name
     super(FeatureCategoryCppTest, self).__init__(renv, features)
+
+  def register_actions(self):
+    menu = FeatureMenu(self.renv, self.name, 'Test C++ project')
+
+    default = menu.add_default_action('Run tests')
+    default.add_argument(
+        '-c', '--config', dest='config', metavar='CONFIG',
+        default='debug', choices=['debug', 'release'],
+        help='Select test config')
+
+    add = menu.add_action('add', 'Add test file group')
+    add.add_argument(dest='group', metavar='GROUP', help='Group name')
 
   def get_build_cat(self):
     return self.renv.feature_ctrl.get_active_category(Build.NAME)
@@ -52,36 +62,11 @@ class FeatureCategoryCppTest(FeatureCategory):
     suffix = test_cfg if 'make' in build_ftr else ''
     return build_cat.get_build_directory(suffix)
 
-  def get_test_directory(self):
-    crutch_dir = self.renv.get_crutch_directory()
-    return os.path.abspath(os.path.join(crutch_dir, NAME))
+  def get_test_src_dir(self):
+    return os.path.join(self.renv.get_project_directory(), 'test')
 
-  def get_tests_directory(self):
-    crutch_dir = self.renv.get_crutch_directory()
-    return os.path.abspath(os.path.join(crutch_dir, NAME, 'tests'))
-
-  def register_properties(self):
-    renv = self.renv
-    renv.set_prop(PROP_DIR, self.get_test_directory(), mirror_to_repl=True)
-    renv.set_prop(PROP_TESTS, self.get_tests_directory(), mirror_to_repl=True)
-
-  def register_actions(self, menu):
-    test = menu.add_feature(
-        self.name,
-        'Test C++ project',
-        group_prefix='feature_test',
-        prefix_with_name=False)
-
-    actions = test.add_actions()
-
-    default = actions.add_default('Run tests')
-    default.add_argument(
-        '-c', '--config', dest='config', metavar='CONFIG',
-        default='debug', choices=['debug', 'release'],
-        help='Select test config')
-
-    add = actions.add_action('add', 'Add test file group')
-    add.add_argument(dest='group', metavar='GROUP', help='Group name')
+  def get_test_bin_dir(self):
+    return os.path.join(self.get_build_directory(), 'test')
 
 
 class FeatureCppTest(FeatureCategoryCppTest):
@@ -90,7 +75,7 @@ class FeatureCppTest(FeatureCategoryCppTest):
     super(FeatureCppTest, self).__init__(renv, None, name)
 
   def get_test_names(self):
-    return os.listdir(self.get_tests_directory())
+    return os.listdir(self.get_test_src_dir())
 
   def run_test(self, name):
     renv = self.renv
@@ -102,7 +87,7 @@ class FeatureCppTest(FeatureCategoryCppTest):
     build = [build_cmk, '--build', build_dir, '--target', name, '--config', test_cfg]
     subprocess.call(' '.join(build), stderr=subprocess.STDOUT, shell=True)
 
-    exe = os.path.join(self.get_tests_directory(), name, name)
+    exe = os.path.join(self.get_test_bin_dir(), name, name)
     subprocess.call(exe, stderr=subprocess.STDOUT, shell=True)
 
   def handle_default(self):

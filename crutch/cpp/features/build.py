@@ -23,11 +23,11 @@
 import subprocess
 import os
 
-from crutch.core.features import FeatureCategory
+from crutch.core.features import FeatureCategory, FeatureMenu
 
 NAME = 'build'
 PROP_CMK = 'feature_build_cmake'
-OPT_CFG = 'feature_build_config'
+OPT_CFG = 'feature_build_default_config'
 
 class FeatureCategoryCppBuild(FeatureCategory):
 
@@ -35,39 +35,29 @@ class FeatureCategoryCppBuild(FeatureCategory):
     self.name = name
     super(FeatureCategoryCppBuild, self).__init__(renv, features)
 
-  def get_build_directory_suffix(self):
-    """
-    This provides suffix name for the build directory. Usually this will be
-    config type for build system that do pre-build configuration like make
-    """
-    return ''
-
-  def get_build_directory(self, suffix=None):
-    crutch_directory = self.renv.get_crutch_directory()
-    suffix = suffix or self.get_build_directory_suffix()
-    return os.path.abspath(os.path.join(crutch_directory, NAME, suffix))
-
   def register_properties(self):
     renv = self.renv
     renv.set_prop_if_not_in(PROP_CMK, 'cmake', mirror_to_config=True)
 
-  def register_actions(self, menu):
-    build = menu.add_feature(
-        self.name,
-        'Build C++ project',
-        group_prefix='feature_build',
-        prefix_with_name=False)
+  def register_actions(self):
+    menu = FeatureMenu(self.renv, self.name, 'Build C++ project')
 
-    build.add_argument(
+    default = menu.add_default_action('Build project')
+    default.add_argument(
         '-c', '--config', dest='config', metavar='CONFIG',
         default='debug', choices=['debug', 'release'],
         help='Select project config')
 
+  def get_build_directory(self, suffix=None):
+    crutch_directory = self.renv.get_crutch_directory()
+    return os.path.abspath(os.path.join(crutch_directory, NAME, suffix))
+
 
 class FeatureCppBuild(FeatureCategoryCppBuild):
 
-  def __init__(self, renv, name, generator):
+  def __init__(self, renv, name, generator, suffix=''):
     self.generator = generator
+    self.suffix = suffix
     super(FeatureCppBuild, self).__init__(renv, None, name)
 
   def configure(self, build_directory, config):
@@ -81,7 +71,7 @@ class FeatureCppBuild(FeatureCategoryCppBuild):
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
   def build(self):
-    build_directory = self.get_build_directory()
+    build_directory = self.get_build_directory(self.suffix)
     build_config = self.renv.get_prop(OPT_CFG)
 
     command = [self.renv.get_prop(PROP_CMK),  \
@@ -92,7 +82,7 @@ class FeatureCppBuild(FeatureCategoryCppBuild):
     subprocess.call(' '.join(command), stderr=subprocess.STDOUT, shell=True)
 
   def handle(self):
-    build_directory = self.get_build_directory()
+    build_directory = self.get_build_directory(self.suffix)
     build_config = self.renv.get_prop(OPT_CFG)
 
     # If not build folder we need to configure cmake first
@@ -105,10 +95,8 @@ class FeatureCppBuild(FeatureCategoryCppBuild):
 class FeatureCppBuildMake(FeatureCppBuild):
 
   def __init__(self, renv):
-    super(FeatureCppBuildMake, self).__init__(renv, 'make', 'Unix Makefiles')
-
-  def get_build_directory_suffix(self):
-    return self.renv.get_prop(OPT_CFG)
+    super(FeatureCppBuildMake, self).\
+        __init__(renv, 'make', 'Unix Makefiles', renv.get_prop(OPT_CFG))
 
 
 class FeatureCppBuildXcode(FeatureCppBuild):

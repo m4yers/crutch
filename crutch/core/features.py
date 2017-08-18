@@ -22,6 +22,19 @@
 
 import os
 
+class FeatureMenu(object):
+
+  def __init__(self, renv, name, desc):
+    self.menu = renv.menu.add_feature(\
+        name, desc, group_prefix='feature_' + name, prefix_with_name=False)
+    self.actions = self.menu.add_actions()
+
+  def add_action(self, name, desc):
+    return self.actions.add_action(name, desc)
+
+  def add_default_action(self, desc):
+    return self.actions.add_default(desc)
+
 class Feature(object):
 
   def __init__(self, renv):
@@ -30,11 +43,11 @@ class Feature(object):
         'default': self.handle_default
         }
 
-    self.register_actions(self.renv.menu)
+    self.register_actions()
     self.register_files()
     self.register_properties()
 
-  def register_actions(self, menu):
+  def register_actions(self):
     pass
 
   def register_files(self):

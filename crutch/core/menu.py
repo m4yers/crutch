@@ -26,6 +26,7 @@ menu in CRUTCH related terms and not just parsers and subparsers
 """
 
 import argparse
+import sys
 
 
 class Menu(object):
@@ -33,17 +34,37 @@ class Menu(object):
   def __init__(self, *args, **kwargs):
     self.parser = argparse.ArgumentParser(*args, **kwargs)
     self.subparsers = self.parser.add_subparsers(title='Features', dest='run_feature')
+    self.features = dict()
 
   def add_feature(self, name, desc, group_prefix='feature', prefix_with_name=True):
-    return MenuFeature(
+    feature = MenuFeature(
         group_prefix + ('_' + name if prefix_with_name else ''),
         self.subparsers.add_parser(name, help=desc))
+    self.features[name] = feature
+    return feature
 
   def print_help(self):
     self.parser.print_help()
 
-  def parse(self, line):
-    return self.parser.parse_args(line)
+  def parse(self, argv):
+    # Prepend with 'default' if necessary
+    feature = argv[0]
+    if feature not in self.features:
+      print "Feature '{}' is not enabled".format(feature)
+      sys.exit(1)
+
+    argv = argv[1:]
+    if argv:
+      actions = self.features[feature].get_actions()
+      action = argv[0]
+      if not actions or action in actions.get_names():
+        argv = [feature] + argv
+      else:
+        argv = [feature, 'default'] + argv
+    else:
+      argv = [feature, 'default']
+
+    return self.parser.parse_args(argv)
 
 
 class MenuActions(object):
@@ -51,12 +72,18 @@ class MenuActions(object):
   def __init__(self, name, subparser):
     self.subparser = subparser
     self.name = name
+    self.actions = dict()
 
   def add_default(self, desc=''):
     return self.add_action('default', desc)
 
   def add_action(self, name, desc=''):
-    return MenuAction(self.name + '_' + name, self.subparser.add_parser(name, help=desc))
+    action = MenuAction(self.name + '_' + name, self.subparser.add_parser(name, help=desc))
+    self.actions[name] = action
+    return action
+
+  def get_names(self):
+    return self.actions.keys()
 
 
 class MenuAction(object):
@@ -79,9 +106,16 @@ class MenuFeature(MenuAction):
     self.parser.add_argument(
         '-d', '--directory', dest='project_directory', default='.',
         metavar='DIRECTORY', help='Target directory(default=curwd())')
+    self.actions = None
 
   def add_actions(self):
-    return MenuActions(self.name, self.parser.add_subparsers(title='Action', dest='action'))
+    self.actions = MenuActions(
+        self.name,
+        self.parser.add_subparsers(title='Action', dest='action'))
+    return self.actions
+
+  def get_actions(self):
+    return self.actions
 
 
 def create_crutch_menu():
