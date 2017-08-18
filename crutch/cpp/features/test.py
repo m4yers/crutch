@@ -75,7 +75,8 @@ class FeatureCppTest(FeatureCategoryCppTest):
     super(FeatureCppTest, self).__init__(renv, None, name)
 
   def get_test_names(self):
-    return os.listdir(self.get_test_src_dir())
+    path = self.get_test_src_dir()
+    return [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
 
   def run_test(self, name):
     renv = self.renv
