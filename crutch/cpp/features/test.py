@@ -30,6 +30,7 @@ import crutch.cpp.features.build as Build
 
 NAME = 'test'
 OPT_CFG = 'feature_test_config'
+OPT_GROUP = 'feature_test_group'
 
 
 class FeatureMenuCppTest(FeatureMenu):
@@ -43,7 +44,7 @@ class FeatureMenuCppTest(FeatureMenu):
         help='Select project config')
 
     add = self.add_action('add', 'Add test file group', handler_add)
-    add.add_argument(dest='group', metavar='GROUP', help='Group name')
+    add.add_argument(dest=OPT_GROUP, metavar='GROUP', help='Group name')
 
 
 FeatureCategoryCppTest = create_simple_feature_category(FeatureMenuCppTest)
@@ -58,7 +59,11 @@ class FeatureCppTest(Feature):
     super(FeatureCppTest, self).__init__(renv)
 
   def register_menu(self):
-    return FeatureMenuCppTest(self.renv, self.name, self.action_default)
+    return FeatureMenuCppTest(
+        self.renv,
+        self.name,
+        handler_default=self.action_default,
+        handler_add=self.action_add)
 
 #-SUPPORT-----------------------------------------------------------------------
 
@@ -107,7 +112,10 @@ class FeatureCppTest(Feature):
     map(self.run_test, self.get_test_names())
 
   def action_add(self):
-    print 'Add test group'
+    renv = self.renv
+
+    group = renv.get_prop(OPT_GROUP)
+    print group
 
 
 class FeatureCppTestGTest(FeatureCppTest):

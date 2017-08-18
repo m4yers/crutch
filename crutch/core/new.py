@@ -20,22 +20,18 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import codecs
-import shutil
-import re
 import os
 
-RE_VERSION = re.compile(r'\d+\.\d+\.\d+')
-RE_DOT_HIDDEN = re.compile(r'.*/\..*$')
-RE_PROJECT_NAME = re.compile(r'project|ProjectName')
-RE_JINJA_EXT = re.compile(r'\.(j2|jinja|jinja2)$')
-RE_JINJA_FILE = re.compile(r'.*\.(j2|jinja|jinja2)$')
-
+from crutch.core.services import FeatureJinja
 from crutch.core.features import Feature, FeatureCategory
 from crutch.core.runner import Runner
 
 
 class FeatureNew(Feature):
+
+  def __init__(self, renv):
+    self.jinja_ftr = renv.feature_ctrl.get_active_feature('jinja')
+    super(FeatureNew, self).__init__(renv)
 
   def register_properties(self):
     super(FeatureNew, self).register_properties()
@@ -55,11 +51,10 @@ class FeatureNew(Feature):
 
   def handle(self):
     renv = self.renv
-    jenv = renv.jenv
+    # jenv = renv.jenv
 
-    project_type = renv.get_prop('project_type')
-    project_name = renv.get_prop('project_name')
-    project_directory = renv.get_prop('project_directory')
+    project_type = renv.get_project_type()
+    project_directory = renv.get_project_directory()
 
     # We need to activate features for the current project type, since we are
     # already within a `new` feature runner we create type specific runner
@@ -70,49 +65,30 @@ class FeatureNew(Feature):
 
     folders = ['main'] + ['features' + os.path.sep + f for f in renv.get_project_features()]
 
-    renv.mirror_repl_to_jinja_globals()
-
     for folder in folders:
-      re_tmpl_prefix = re.compile(r'^' + project_type + os.path.sep + folder)
-      templates = filter(re_tmpl_prefix.match, jenv.list_templates())
-
-      for tmpl_src in templates:
-        filename = re_tmpl_prefix.sub('', tmpl_src)
-        filename = RE_PROJECT_NAME.sub(project_name, filename)
-        filename = project_directory + filename
-
-        # Do not override existing files
-        if os.path.exists(filename):
-          continue
-
-        # Create the containing folder if does not exist already
-        folder = os.path.dirname(filename)
-        if not os.path.exists(folder):
-          os.makedirs(folder)
-
-        tmpl = jenv.get_template(tmpl_src)
-
-        # If the file is not a template just copy it
-        if not RE_JINJA_FILE.match(filename):
-          shutil.copyfile(tmpl.filename, filename)
-          continue
-
-        # Drop .jenv extension
-        filename = RE_JINJA_EXT.sub('', filename)
-
-        with codecs.open(filename, 'w', 'utf-8') as out:
-          out.write(tmpl.render())
+      self.jinja_ftr.copy_folder(
+          os.path.join(project_type, folder),
+          project_directory)
 
 
 class RunnerNew(Runner):
 
   def __init__(self, renv):
     super(RunnerNew, self).__init__(renv)
+
+    self.register_feature_category_class(
+        'services',
+        FeatureCategory,
+        features=['jinja'],
+        defaults=['jinja'])
+    self.register_feature_class('jinja', FeatureJinja)
+
     self.register_feature_category_class(
         'crutch',
         FeatureCategory,
         features=['new'],
-        defaults=['new'])
+        defaults=['new'],
+        requires=['jinja'])
     self.register_feature_class('new', FeatureNew)
 
   def run(self):

@@ -140,6 +140,10 @@ class FeatureCategory(FeatureProto):
   def get_active_features(self):
     return self.active_features.values()
 
+  def get_active_feature(self, name):
+    assert name in self.active_features
+    return self.active_features[name]
+
   def set_up(self):
     for feature in self.active_features.values():
       feature.set_up()
