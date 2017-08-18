@@ -1,0 +1,8 @@
+file (GLOB ProjectSource ${CMAKE_SOURCE_DIR}/src/{{ project_name }}/*.cpp)
+file (GLOB TestSource *.cpp)
+
+add_executable({{ feature_test_group }} ${TestSource} ${ProjectSource})
+
+target_link_libraries({{ feature_test_group }} libgtest libgmock)
+
+add_test(NAME {{ feature_test_group }} COMMAND {{ feature_test_group }})

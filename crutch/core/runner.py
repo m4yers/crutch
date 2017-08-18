@@ -353,6 +353,11 @@ class FeatureCtrl(object):
     cat = self.active_categories[cat_name]
     return cat.get_active_feature(name)
 
+  def get_singular_active_feature(self, cat_name):
+    assert cat_name in self.active_categories
+    cat = self.active_categories[cat_name]
+    return cat.get_active_features()[0]
+
 
 class Runner(object):
 

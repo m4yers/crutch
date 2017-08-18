@@ -22,6 +22,9 @@
 
 from crutch.core.runner import Runner
 
+from crutch.core.services import FeatureJinja
+from crutch.core.features import FeatureCategory
+
 from crutch.cpp.features.build import FeatureCategoryCppBuild
 from crutch.cpp.features.build import FeatureCppBuildMake, FeatureCppBuildXcode
 
@@ -32,6 +35,13 @@ class RunnerCpp(Runner):
 
   def __init__(self, renv):
     super(RunnerCpp, self).__init__(renv)
+
+    self.register_feature_category_class(
+        'services',
+        FeatureCategory,
+        features=['jinja'],
+        defaults=['jinja'])
+    self.register_feature_class('jinja', FeatureJinja)
 
     self.register_feature_category_class(
         'build',
@@ -46,7 +56,7 @@ class RunnerCpp(Runner):
         FeatureCategoryCppTest,
         features=['gtest'],
         defaults=['gtest'],
-        requires=['build'])
+        requires=['build', 'jinja'])
     self.register_feature_class('gtest', FeatureCppTestGTest)
 
     self.register_default_run_feature('build')

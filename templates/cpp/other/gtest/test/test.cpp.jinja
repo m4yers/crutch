@@ -1,0 +1,8 @@
+#include "gtest/gtest.h"
+
+TEST({{ feature_test_group }}_true_test, TrueIsTrue) { ASSERT_TRUE(true); }
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

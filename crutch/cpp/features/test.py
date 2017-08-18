@@ -21,6 +21,8 @@
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import subprocess
+import sys
+import re
 import os
 
 from crutch.core.features import create_simple_feature_category
@@ -32,6 +34,8 @@ NAME = 'test'
 OPT_CFG = 'feature_test_config'
 OPT_GROUP = 'feature_test_group'
 
+
+RE_TEST_ALLOWED_NAME = re.compile(r'[a-zA-Z_]+')
 
 class FeatureMenuCppTest(FeatureMenu):
 
@@ -54,8 +58,8 @@ class FeatureCppTest(Feature):
 
   def __init__(self, renv, name):
     self.name = name
-    self.build_ftr = \
-        renv.feature_ctrl.get_active_category(Build.NAME).get_active_features()[0]
+    self.build_ftr = renv.feature_ctrl.get_singular_active_feature(Build.NAME)
+    self.jinja_ftr = renv.feature_ctrl.get_active_feature('jinja')
     super(FeatureCppTest, self).__init__(renv)
 
   def register_menu(self):
@@ -105,17 +109,31 @@ class FeatureCppTest(Feature):
     build_dir = self.get_build_directory()
     test_cfg = renv.get_prop(OPT_CFG)
 
-    # If the build directory is not present we call build.configure first
-    if not os.path.exists(build_dir):
-      self.build_ftr.configure(build_dir, test_cfg)
+    # Always reconfigure the build folder since there might be new tests
+    self.build_ftr.configure(build_dir, test_cfg)
 
     map(self.run_test, self.get_test_names())
 
   def action_add(self):
     renv = self.renv
 
+    project_type = renv.get_project_type()
+
     group = renv.get_prop(OPT_GROUP)
-    print group
+
+    if not RE_TEST_ALLOWED_NAME.match(group):
+      print "'{}' is not a valid test name".format(group)
+      sys.exit(1)
+
+    if group in self.get_test_names():
+      print "'{}' already exists".format(group)
+      sys.exit(1)
+
+    renv.mirror_props_to_repl([OPT_GROUP, 'project_name'])
+
+    self.jinja_ftr.copy_folder(
+        os.path.join(project_type, 'other', self.name, 'test'),
+        os.path.join(self.get_test_src_dir(), group))
 
 
 class FeatureCppTestGTest(FeatureCppTest):
