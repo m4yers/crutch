@@ -75,6 +75,12 @@ class RuntimeEnvironment(object):
   def get_project_directory(self):
     return self.get_prop('project_directory')
 
+  def get_project_name(self):
+    return self.get_prop('project_name')
+
+  def get_project_type(self):
+    return self.get_prop('project_type')
+
   def get_prop(self, name, default=None):
     return self.props.get(name, default)
 
@@ -266,7 +272,7 @@ class FeatureCtrl(object):
     while cat_queue:
       cat_name = cat_queue.pop()
 
-      # This is a circular dependency
+      # This is a circular dependency. Cycles will be reported later
       if cat_name in marked:
         continue
 
@@ -279,11 +285,27 @@ class FeatureCtrl(object):
           req_cat_name = req
           # If required category is not already in the graph, add it and queue
           # it for the next cycle to process
-          if not req_cat_name in cat_to_feats:
+          if req_cat_name not in cat_to_feats:
             graph.add_edge(req_cat_name, cat_name)
             cat = self.categories[req_cat_name]
             cat_to_feats[req_cat_name] = cat.defaults
             cat_queue.append(req_cat_name)
+        elif self.is_feature(req):
+          req_cat_name = self.feature_to_category[req]
+          cat = self.categories[req_cat_name]
+
+          # If required category is not already in the graph, add it with just
+          # this feature  and queue it for the next cycle to process
+          if req_cat_name not in cat_to_feats:
+            cat = self.categories[req_cat_name]
+            cat_to_feats[req_cat_name] = [req]
+            cat_queue.append(req_cat_name)
+
+          # Otherwise append the feature to the list
+          elif not cat.singular:
+            cat_to_feats[req_cat_name].append(req)
+
+          graph.add_edge(req_cat_name, cat_name)
 
     return graph, cat_to_feats
 
@@ -340,6 +362,12 @@ class FeatureCtrl(object):
   def get_active_category(self, name):
     assert name in self.active_categories
     return self.active_categories[name]
+
+  def get_active_feature(self, name):
+    cat_name = self.feature_to_category[name]
+    assert cat_name in self.active_categories
+    cat = self.active_categories[cat_name]
+    return cat.get_active_feature(name)
 
 
 class Runner(object):
