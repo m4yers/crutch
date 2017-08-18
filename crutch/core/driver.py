@@ -23,10 +23,6 @@
 import sys
 import os
 
-from pkg_resources import Requirement, resource_filename
-
-import jinja2
-
 from crutch.core.menu import create_crutch_menu
 
 from crutch.core.runner import RuntimeEnvironment
@@ -40,10 +36,7 @@ class Driver(object):
     self.argv = argv
 
   def create_runtime_environment(self, menu):
-    templates = resource_filename(Requirement.parse('crutch'), 'templates')
-    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader(templates))
-
-    renv = RuntimeEnvironment(menu, jenv, self.runners)
+    renv = RuntimeEnvironment(menu, self.runners)
 
     defaults = renv.get_default_properties()
     defaults['os_login'] = os.getlogin()

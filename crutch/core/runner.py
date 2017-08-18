@@ -35,14 +35,12 @@ class RuntimeEnvironment(object):
   Object of this class holds all necessary utility to get runner run
   """
 
-  def __init__(self, menu, jenv, runners):
+  def __init__(self, menu, runners):
     self.menu = menu
-    self.jenv = jenv
     self.runners = runners
     self.props = Properties()
     self.repl = Replacements()
     self.prop_to_repl_mirror = self.repl.add_provider('prop_to_repl_mirror', dict())
-    self.current_jinja_globals = list()
     self.feature_ctrl = None
 
   def set_feature_ctrl(self, ctrl):
@@ -114,20 +112,6 @@ class RuntimeEnvironment(object):
 
     for prop in properties:
       self.prop_to_repl_mirror[prop] = self.props[prop]
-
-  def mirror_repl_to_jinja_globals(self):
-    """
-    Call this method before rendering any jenv template to populate the
-    current_jinja_globals object with the most recent replacements
-    """
-
-    # First, delete already existing current_jinja_globals
-    for glob in self.current_jinja_globals:
-      del self.jenv.current_jinja_globals[glob]
-
-    # Then, populate with fresh ones
-    self.repl.fetch()
-    self.jenv.globals.update(self.repl)
 
 
 class TemporaryFilesManager(object):

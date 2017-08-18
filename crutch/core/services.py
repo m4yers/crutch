@@ -25,6 +25,10 @@ import shutil
 import re
 import os
 
+from pkg_resources import Requirement, resource_filename
+
+import jinja2
+
 from crutch.core.features import Feature
 
 
@@ -38,13 +42,37 @@ RE_JINJA_FILE = re.compile(r'.*\.(j2|jinja|jinja2)$')
 
 class FeatureJinja(Feature):
 
+  def __init__(self, renv):
+    super(FeatureJinja, self).__init__(renv)
+    templates = resource_filename(Requirement.parse('crutch'), 'templates')
+    self.jenv = jinja2.Environment(loader=jinja2.FileSystemLoader(templates))
+    self.current_jinja_globals = list()
+
+#-SUPPORT-----------------------------------------------------------------------
+
+  def mirror_repl_to_jinja_globals(self):
+    """
+    Call this method before rendering any jenv template to populate the
+    current_jinja_globals object with the most recent replacements
+    """
+
+    # First, delete already existing current_jinja_globals
+    for glob in self.current_jinja_globals:
+      del self.current_jinja_globals[glob]
+
+    # Then, populate with fresh ones
+    self.renv.repl.fetch()
+    self.jenv.globals.update(self.renv.repl)
+
+#-API---------------------------------------------------------------------------
+
   def copy_folder(self, src_dir, dst_dir):
     renv = self.renv
-    jenv = renv.jenv
+    jenv = self.jenv
 
     project_name = renv.get_project_name()
 
-    renv.mirror_repl_to_jinja_globals()
+    self.mirror_repl_to_jinja_globals()
 
     re_tmpl_prefix = re.compile(r'^' + src_dir)
     templates = filter(re_tmpl_prefix.match, jenv.list_templates())
