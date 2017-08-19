@@ -24,8 +24,9 @@ import sys
 import os
 
 from crutch.core.menu import create_crutch_menu
-
 from crutch.core.runtime import RuntimeEnvironment
+
+import crutch.core.lifecycle as Lifecycle
 
 class Driver(object):
 
@@ -35,8 +36,10 @@ class Driver(object):
       argv = sys.argv
     self.argv = argv
 
-  def create_runtime_environment(self, menu):
-    renv = RuntimeEnvironment(menu, self.runners)
+  def create_runtime_environment(self):
+    renv = RuntimeEnvironment(self.runners)
+    menu = create_crutch_menu(renv)
+    renv.menu = menu
 
     defaults = renv.get_default_properties()
     defaults['os_login'] = os.getlogin()
@@ -125,11 +128,11 @@ class Driver(object):
 
 
   def run(self):
-    menu = create_crutch_menu()
-
     # Before we start parsing the cli options we need a fully initialized
     # runtime environment
-    renv = self.create_runtime_environment(menu)
+    renv = self.create_runtime_environment()
+    renv.lifecycle.enable_tracing()
+    renv.lifecycle.mark(Lifecycle.CRUTCH_START)
 
     argv = self.argv[1:]
     renv.set_prop('sys_argv', argv)
@@ -143,5 +146,7 @@ class Driver(object):
       runner = self.handle_normal(renv)
 
     runner.run()
-
+    runner.deactivate_features()
     renv.config_flush()
+    renv.lifecycle.mark(Lifecycle.CRUTCH_STOP)
+    sys.exit(0)

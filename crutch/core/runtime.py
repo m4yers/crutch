@@ -24,19 +24,22 @@ from crutch.core.properties import Properties
 from crutch.core.replacements import Replacements
 from crutch.core.features import FeatureCtrl
 
+import crutch.core.lifecycle as Lifecycle
+
 
 class RuntimeEnvironment(object):
   """
   Object of this class holds all necessary utility to get runner run
   """
 
-  def __init__(self, menu, runners):
-    self.menu = menu
+  def __init__(self, runners):
+    self.menu = None
     self.runners = runners
     self.props = Properties()
     self.repl = Replacements()
     self.prop_to_repl_mirror = self.repl.add_provider('prop_to_repl_mirror', dict())
     self.feature_ctrl = FeatureCtrl(self)
+    self.lifecycle = Lifecycle.Lifecycle()
 
   def update_properties(self, props):
     self.props.update(props)
@@ -86,10 +89,14 @@ class RuntimeEnvironment(object):
       self.set_prop(name, value, mirror_to_config, mirror_to_repl)
 
   def config_load(self):
+    self.lifecycle.mark(Lifecycle.CONFIG_LOAD, Lifecycle.ORDER_BEFORE)
     self.props.config_load()
+    self.lifecycle.mark(Lifecycle.CONFIG_LOAD, Lifecycle.ORDER_AFTER)
 
   def config_flush(self):
+    self.lifecycle.mark(Lifecycle.CONFIG_FLUSH, Lifecycle.ORDER_BEFORE)
     self.props.config_flush()
+    self.lifecycle.mark(Lifecycle.CONFIG_FLUSH, Lifecycle.ORDER_AFTER)
 
   def mirror_props_to_config(self, properties):
     for prop in properties:

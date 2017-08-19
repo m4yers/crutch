@@ -28,10 +28,13 @@ menu in CRUTCH related terms and not just parsers and subparsers
 import argparse
 import sys
 
+import crutch.core.lifecycle as Lifecycle
+
 
 class Menu(object):
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, renv, *args, **kwargs):
+    self.renv = renv
     self.parser = argparse.ArgumentParser(*args, **kwargs)
     self.subparsers = self.parser.add_subparsers(title='Features', dest='run_feature')
     self.features = dict()
@@ -46,6 +49,7 @@ class Menu(object):
 
   def parse(self, argv):
     # Prepend with 'default' if necessary
+    self.renv.lifecycle.mark(Lifecycle.CMD_PARSE, Lifecycle.ORDER_BEFORE, argv)
     feature = argv[0]
     if feature not in self.features:
       print "Feature '{}' is not enabled".format(feature)
@@ -61,6 +65,8 @@ class Menu(object):
         argv = [feature, 'default'] + argv
     else:
       argv = [feature, 'default']
+
+    self.renv.lifecycle.mark(Lifecycle.CMD_PARSE, Lifecycle.ORDER_AFTER)
 
     return self.parser.parse_args(argv)
 
@@ -110,14 +116,14 @@ class MenuFeature(MenuAction):
     return self.actions
 
 
-def create_crutch_menu():
+def create_crutch_menu(renv):
   """
   Create the main start menu for CRUTCH, this menu creates `new` feature menu
   explicitly since it must be available BEFORE runner is intialized and any
   features are available. Further feature invocation will be performed basing
   on config data
   """
-  menu = Menu(prog='CRUTCH', description='Get a project running fast')
+  menu = Menu(renv, prog='CRUTCH', description='Get a project running fast')
 
   new = menu.add_feature('new', 'Create a project')
 

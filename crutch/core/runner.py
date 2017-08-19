@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import crutch.core.lifecycle as Lifecycle
+
 
 class Runner(object):
 
@@ -39,9 +41,15 @@ class Runner(object):
   def activate_features(self):
     return self.renv.feature_ctrl.activate()
 
+  def deactivate_features(self):
+    return self.renv.feature_ctrl.deactivate()
+
   def invoke_feature(self, name):
     self.renv.feature_ctrl.invoke(name)
 
   def run(self):
     renv = self.renv
-    self.invoke_feature(renv.get_run_feature() or self.default_run_feature)
+    run_feature = renv.get_run_feature() or self.default_run_feature
+    renv.lifecycle.mark(Lifecycle.RUNNER_RUN, Lifecycle.ORDER_BEFORE, run_feature)
+    self.invoke_feature(run_feature)
+    renv.lifecycle.mark(Lifecycle.RUNNER_RUN, Lifecycle.ORDER_AFTER, run_feature)

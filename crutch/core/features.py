@@ -25,6 +25,8 @@ import os
 
 import networkx as nx
 
+import crutch.core.lifecycle as Lifecycle
+
 
 class FeatureMenu(object):
   """
@@ -62,6 +64,21 @@ class FeatureProto(object):
     Here you create and return feature's menu actions if any
     """
     pass
+
+  def activate(self):
+    """
+    Activation actions done by a feature or category. This is called whe
+    CRUTCH is about to execute runner
+    """
+    pass
+
+  def deactivate(self):
+    """
+    Deactivation actions done by a feature or category. This is called when
+    CRUTCH is about to exit
+    """
+    pass
+
 
   def set_up(self):
     """
@@ -127,15 +144,22 @@ class FeatureCategory(FeatureProto):
     map(self.activate_feature, feature_names)
 
   def activate_feature(self, feature_name):
+    if feature_name in self.active_features:
+      return
+    self.renv.lifecycle.mark(Lifecycle.FEATURE_CREATE, Lifecycle.ORDER_BEFORE, feature_name)
     instance = self.features[feature_name](self.renv)
     self.active_features[feature_name] = instance
+    instance.activate()
+    self.renv.lifecycle.mark(Lifecycle.FEATURE_CREATE, Lifecycle.ORDER_AFTER, feature_name)
 
   def deactivate_feature(self, feature_name):
+    self.renv.lifecycle.mark(Lifecycle.FEATURE_DESTROY, Lifecycle.ORDER_BEFORE, feature_name)
     feature = self.active_features.get(feature_name, None)
     if not feature:
       raise Exception("You cannot deactivate non-active feature")
-    feature.tear_down()
+    feature.deactivate()
     del self.active_features[feature_name]
+    self.renv.lifecycle.mark(Lifecycle.FEATURE_DESTROY, Lifecycle.ORDER_BEFORE, feature_name)
 
   def get_active_feature_names(self):
     return self.active_features.keys()
@@ -346,23 +370,36 @@ class FeatureCtrl(object):
     return cat_order, feat_order, requested_ftrs
 
   def activate(self):
+    self.renv.lifecycle.mark(Lifecycle.FEATURE_ACTIVATION, Lifecycle.ORDER_BEFORE)
     renv = self.renv
     cat_order, feat_order, requested_ftrs = self.get_init_order()
 
     for cat_name in cat_order:
       cat = self.categories[cat_name]
-      cat_instance = cat.init(
-          renv,
-          {n: self.features[n].init for n in cat.features})
       cat_active_features = [f for f in feat_order if f in cat.features]
-      cat_instance.activate_features(cat_active_features)
-      self.active_categories[cat_name] = cat_instance
+      cat_instance = self.active_categories.get(cat_name, None)
+
+      if not cat_instance:
+        self.renv.lifecycle.mark(Lifecycle.CATEGORY_CREATE, Lifecycle.ORDER_BEFORE, cat_name)
+        cat_instance = cat.init(renv, {n: self.features[n].init for n in cat.features})
+        cat_instance.activate()
+        self.active_categories[cat_name] = cat_instance
+        cat_instance.activate_features(cat_active_features)
+        self.renv.lifecycle.mark(Lifecycle.CATEGORY_CREATE, Lifecycle.ORDER_AFTER, cat_name)
+      else:
+        cat_instance.activate_features(cat_active_features)
 
       renv.set_prop('project_feature_category_' + cat_name, True, mirror_to_repl=True)
       for feat_name in cat_active_features:
         renv.set_prop('project_feature_' + feat_name, True, mirror_to_repl=True)
 
+    self.renv.lifecycle.mark(Lifecycle.FEATURE_ACTIVATION, Lifecycle.ORDER_AFTER)
+
     return feat_order, requested_ftrs
+
+  def deactivate(self):
+    self.renv.lifecycle.mark(Lifecycle.FEATURE_DEACTIVATION, Lifecycle.ORDER_BEFORE)
+    self.renv.lifecycle.mark(Lifecycle.FEATURE_DEACTIVATION, Lifecycle.ORDER_AFTER)
 
   def invoke(self, feature):
     category = self.active_categories.get(feature, None)

@@ -92,23 +92,3 @@ class RunnerNew(Runner):
         defaults=['new'],
         requires=['jinja'])
     self.register_feature_class('new', FeatureNew)
-
-  def run(self):
-    """
-    Before we run anything we save all the features passed from cli and replace
-    them with simple 'default' value so the feature-ctrl will initialize `new`
-    the way we need
-    """
-    saved_features = self.renv.get_prop('project_features')
-    self.renv.set_prop('project_features', 'default')
-
-    #---------------------------
-    renv = self.renv
-    self.activate_features()
-    #---------------------------
-
-    self.renv.set_prop('project_features', saved_features)
-
-    #---------------------------
-    self.invoke_feature(renv.get_run_feature())
-    #---------------------------
