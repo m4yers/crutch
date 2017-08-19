@@ -21,6 +21,7 @@
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import subprocess
+import shutil
 import sys
 import re
 import os
@@ -39,7 +40,8 @@ RE_TEST_ALLOWED_NAME = re.compile(r'[a-zA-Z_]+')
 
 class FeatureMenuCppTest(FeatureMenu):
 
-  def __init__(self, renv, name=NAME, handler_default=None, handler_add=None):
+  def __init__(self, renv, name=NAME,\
+      handler_default=None, handler_add=None, handler_remove=None):
     super(FeatureMenuCppTest, self).__init__(renv, name, 'Test C++ Project')
     default = self.add_default_action('Test project', handler_default)
     default.add_argument(
@@ -49,6 +51,9 @@ class FeatureMenuCppTest(FeatureMenu):
 
     add = self.add_action('add', 'Add test file group', handler_add)
     add.add_argument(dest=OPT_GROUP, metavar='GROUP', help='Group name')
+
+    remove = self.add_action('remove', 'Remove test file group', handler_remove)
+    remove.add_argument(dest=OPT_GROUP, metavar='GROUP', help='Group name')
 
 
 FeatureCategoryCppTest = create_simple_feature_category(FeatureMenuCppTest)
@@ -67,7 +72,8 @@ class FeatureCppTest(Feature):
         self.renv,
         self.name,
         handler_default=self.action_default,
-        handler_add=self.action_add)
+        handler_add=self.action_add,
+        handler_remove=self.action_remove)
 
 #-SUPPORT-----------------------------------------------------------------------
 
@@ -134,6 +140,17 @@ class FeatureCppTest(Feature):
     self.jinja_ftr.copy_folder(
         os.path.join(project_type, 'other', self.name, 'test'),
         os.path.join(self.get_test_src_dir(), group))
+
+  def action_remove(self):
+    renv = self.renv
+
+    group = renv.get_prop(OPT_GROUP)
+
+    if not group in self.get_test_names():
+      print "'{}' does not exist".format(group)
+      sys.exit(1)
+
+    shutil.rmtree(os.path.join(self.get_test_src_dir(), group))
 
 
 class FeatureCppTestGTest(FeatureCppTest):
