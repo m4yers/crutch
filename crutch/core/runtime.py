@@ -21,11 +21,25 @@
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from crutch.core.properties import Properties
-from crutch.core.replacements import Replacements
+from crutch.core.replacements import Replacements, GenerativeReplacementsProvider
 from crutch.core.features import FeatureCtrl
 
 import crutch.core.lifecycle as Lifecycle
 
+
+class RuntimeEnvReplProvider(GenerativeReplacementsProvider):
+
+  def __init__(self, renv):
+    self.renv = renv
+    GenerativeReplacementsProvider.__init__(self)
+
+  def generate(self):
+    self.data = dict()
+    self.data['project_username'] = self.renv.get_prop('project_username')
+    self.data['project_name'] = self.renv.get_project_name()
+    self.data['project_type'] = self.renv.get_project_type()
+    self.data['project_directory'] = self.renv.get_project_directory()
+    return self.data
 
 class RuntimeEnvironment(object):
   """
@@ -37,9 +51,10 @@ class RuntimeEnvironment(object):
     self.runners = runners
     self.props = Properties()
     self.repl = Replacements()
-    self.prop_to_repl_mirror = self.repl.add_provider('prop_to_repl_mirror', dict())
     self.feature_ctrl = FeatureCtrl(self)
     self.lifecycle = Lifecycle.Lifecycle()
+    self.prop_to_repl_mirror = self.repl.add_provider('prop-to-repl-mirror', dict())
+    self.repl.add_provider('runtime-env-repl', RuntimeEnvReplProvider(self))
 
   def update_properties(self, props):
     self.props.update(props)

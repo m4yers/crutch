@@ -60,8 +60,6 @@ class FeatureJinja(Feature):
     for glob in self.current_jinja_globals:
       del self.current_jinja_globals[glob]
 
-    self.renv.mirror_props_to_repl(['project_type', 'project_name', 'project_directory'])
-
     # Then, populate with fresh ones
     self.renv.repl.fetch()
     self.jenv.globals.update(self.renv.repl)

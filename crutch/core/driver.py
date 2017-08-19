@@ -42,11 +42,11 @@ class Driver(object):
     renv.menu = menu
 
     defaults = renv.get_default_properties()
-    defaults['os_login'] = os.getlogin()
+    defaults['sys_login'] = os.getlogin()
     defaults['sys_python'] = sys.executable
 
     renv.mirror_props_to_repl(defaults.keys())
-    renv.mirror_props_to_config(defaults.keys())
+    renv.mirror_props_to_config(['sys_python'])
 
     return renv
 
@@ -131,7 +131,7 @@ class Driver(object):
     # Before we start parsing the cli options we need a fully initialized
     # runtime environment
     renv = self.create_runtime_environment()
-    renv.lifecycle.enable_tracing()
+    # renv.lifecycle.enable_tracing()
     renv.lifecycle.mark(Lifecycle.CRUTCH_START)
 
     argv = self.argv[1:]
@@ -146,7 +146,13 @@ class Driver(object):
       runner = self.handle_normal(renv)
 
     runner.run()
+
     runner.deactivate_features()
+
+    # print renv.props.get_print_info()
+    # print renv.repl.get_print_info()
+
     renv.config_flush()
+
     renv.lifecycle.mark(Lifecycle.CRUTCH_STOP)
     sys.exit(0)

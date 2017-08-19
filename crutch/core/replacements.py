@@ -52,7 +52,6 @@ class GenerativeReplacementsProvider(UserDict.DictMixin):
     return self.data
 
 
-
 class Replacements(UserDict.DictMixin):
   """
   Replacements is a container for replacments providers, it is used to fill in
@@ -101,7 +100,7 @@ class Replacements(UserDict.DictMixin):
     for provider in self.static.values():
       for key in provider:
         if key in self.data:
-          raise Exception("Key conflict")
+          raise Exception("Key conflict {}".format(key))
         else:
           self.data[key] = provider[key]
 
@@ -109,7 +108,7 @@ class Replacements(UserDict.DictMixin):
       provider.generate()
       for key in provider:
         if key in self.data:
-          raise Exception("Key conflict")
+          raise Exception("Key conflict {}".format(key))
         else:
           self.data[key] = provider[key]
 

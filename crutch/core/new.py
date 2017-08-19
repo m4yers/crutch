@@ -37,17 +37,17 @@ class FeatureNew(Feature):
     super(FeatureNew, self).register_properties()
     renv = self.renv
 
-    project_directory = renv.get_prop('project_directory')
+    project_directory = renv.get_project_directory()
 
-    renv.set_prop('user_name', renv.get_prop('os_login'), True, True)
-    renv.set_prop('project_type', renv.get_prop('project_type'), True, True)
+    renv.set_prop('project_username', renv.get_prop('sys_login'), mirror_to_config=True)
+    renv.set_prop('project_type', renv.get_prop('project_type'), mirror_to_config=True)
     renv.set_prop(
         'project_name',
-        renv.get_prop('project_name') or os.path.basename(project_directory), True, True)
+        renv.get_prop('project_name') or os.path.basename(project_directory),
+        mirror_to_config=True)
 
   def handle(self):
     renv = self.renv
-    # jenv = renv.jenv
 
     project_type = renv.get_project_type()
     project_directory = renv.get_project_directory()

@@ -123,7 +123,7 @@ class Feature(FeatureProto):
     Here you define/save all you properties to be mirrored to config or repl
     """
     project_directory = os.path.abspath(self.renv.get_prop('project_directory'))
-    self.renv.set_prop('project_directory', project_directory, mirror_to_repl=True)
+    self.renv.set_prop('project_directory', project_directory)
 
   def handle(self):
     action = self.renv.get_prop('action')
