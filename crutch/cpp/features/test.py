@@ -34,6 +34,7 @@ import crutch.cpp.features.build as Build
 NAME = 'test'
 OPT_CFG = 'feature_test_config'
 OPT_GROUP = 'feature_test_group'
+OPT_TESTS = 'feature_test_tests'
 
 
 RE_TEST_ALLOWED_NAME = re.compile(r'[a-zA-Z_]+')
@@ -48,6 +49,9 @@ class FeatureMenuCppTest(FeatureMenu):
         '-c', '--config', dest=OPT_CFG, metavar='CONFIG',
         default='debug', choices=['debug', 'release'],
         help='Select project config')
+    default.add_argument(
+        '-t', '--tests', dest=OPT_TESTS, metavar='TESTS',
+        default=None, nargs='*', help='Select tests to run')
 
     add = self.add_action('add', 'Add test file group', handler_add)
     add.add_argument(dest=OPT_GROUP, metavar='GROUP', help='Group name')
@@ -114,11 +118,13 @@ class FeatureCppTest(Feature):
 
     build_dir = self.get_build_directory()
     test_cfg = renv.get_prop(OPT_CFG)
+    tests = self.get_test_names()
+    tests = set(tests) & set(renv.get_prop(OPT_TESTS) or tests)
 
     # Always reconfigure the build folder since there might be new tests
     self.build_ftr.configure(build_dir, test_cfg)
 
-    map(self.run_test, self.get_test_names())
+    map(self.run_test, tests)
 
   def action_add(self):
     renv = self.renv
