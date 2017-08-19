@@ -39,8 +39,7 @@ class RunnerCpp(Runner):
     self.register_feature_category_class(
         'services',
         FeatureCategory,
-        features=['jinja'],
-        defaults=['jinja'])
+        features=['jinja'])
     self.register_feature_class('jinja', FeatureJinja)
 
     self.register_feature_category_class(

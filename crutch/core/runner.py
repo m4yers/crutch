@@ -298,6 +298,7 @@ class FeatureCtrl(object):
     Build category and feature instantiation order
     """
     cat_to_feats = self.normalize_project_features()
+    requested_ftrs = sum([f for f in cat_to_feats.values()], [])
     graph, cat_to_feats = self.build_dependency_graph(cat_to_feats)
 
     # If not DAG we cannot build graph's topology
@@ -313,11 +314,11 @@ class FeatureCtrl(object):
     for cat_name in cat_order:
       feat_order.extend(cat_to_feats[cat_name])
 
-    return cat_order, feat_order
+    return cat_order, feat_order, requested_ftrs
 
   def activate(self):
     renv = self.renv
-    cat_order, feat_order = self.get_init_order()
+    cat_order, feat_order, requested_ftrs = self.get_init_order()
 
     for cat_name in cat_order:
       cat = self.categories[cat_name]
@@ -332,7 +333,7 @@ class FeatureCtrl(object):
       for feat_name in cat_active_features:
         renv.set_prop('project_feature_' + feat_name, True, mirror_to_repl=True)
 
-    renv.set_prop('project_features', feat_order, mirror_to_config=True)
+    renv.set_prop('project_features', requested_ftrs, mirror_to_config=True)
 
   def invoke(self, feature):
     category = self.active_categories.get(feature, None)
