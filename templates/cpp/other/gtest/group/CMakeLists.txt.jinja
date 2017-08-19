@@ -1,0 +1,5 @@
+get_subdirlist(TEST_SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
+
+foreach(test ${TEST_SUBDIRS})
+  add_subdirectory(${test})
+endforeach()

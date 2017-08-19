@@ -35,7 +35,7 @@ from crutch.core.features import Feature
 NAME = 'services'
 RE_VERSION = re.compile(r'\d+\.\d+\.\d+')
 RE_DOT_HIDDEN = re.compile(r'.*/\..*$')
-RE_PROJECT_NAME = re.compile(r'project|ProjectName')
+RE_PROJECT_NAME = re.compile(r'ProjectNameRepl')
 RE_JINJA_EXT = re.compile(r'\.(j2|jinja|jinja2)$')
 RE_JINJA_FILE = re.compile(r'.*\.(j2|jinja|jinja2)$')
 
@@ -59,6 +59,8 @@ class FeatureJinja(Feature):
     # First, delete already existing current_jinja_globals
     for glob in self.current_jinja_globals:
       del self.current_jinja_globals[glob]
+
+    self.renv.mirror_props_to_repl(['project_type', 'project_name', 'project_directory'])
 
     # Then, populate with fresh ones
     self.renv.repl.fetch()

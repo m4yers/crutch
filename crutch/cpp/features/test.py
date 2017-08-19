@@ -23,7 +23,6 @@
 import subprocess
 import shutil
 import sys
-import re
 import os
 
 from crutch.core.features import create_simple_feature_category
@@ -33,11 +32,9 @@ import crutch.cpp.features.build as Build
 
 NAME = 'test'
 OPT_CFG = 'feature_test_config'
-OPT_GROUP = 'feature_test_group'
+OPT_TEST = 'feature_test_group'
 OPT_TESTS = 'feature_test_tests'
 
-
-RE_TEST_ALLOWED_NAME = re.compile(r'[a-zA-Z_]+')
 
 class FeatureMenuCppTest(FeatureMenu):
 
@@ -51,16 +48,39 @@ class FeatureMenuCppTest(FeatureMenu):
         help='Select project config')
     default.add_argument(
         '-t', '--tests', dest=OPT_TESTS, metavar='TESTS',
-        default=None, nargs='*', help='Select tests to run')
+        default=[], nargs='*', help='Select tests to run')
 
-    add = self.add_action('add', 'Add test file group', handler_add)
-    add.add_argument(dest=OPT_GROUP, metavar='GROUP', help='Group name')
+    add = self.add_action('add', 'Add test', handler_add)
+    add.add_argument(dest=OPT_TEST, metavar='TEST', help='Test name')
 
-    remove = self.add_action('remove', 'Remove test file group', handler_remove)
-    remove.add_argument(dest=OPT_GROUP, metavar='GROUP', help='Group name')
+    remove = self.add_action('remove', 'Remove test', handler_remove)
+    remove.add_argument(dest=OPT_TEST, metavar='TEST', help='Test name')
 
 
 FeatureCategoryCppTest = create_simple_feature_category(FeatureMenuCppTest)
+
+
+class Test(object):
+
+  def __init__(self, name):
+    self.name = name
+    self.path = name.split('/')
+    self.target = name.replace('/', '_')
+
+  def __repr__(self):
+    return '[Test {}]'.format(self.name)
+
+  def __str__(self):
+    return self.__repr__()
+
+  def __hash__(self):
+    return hash(self.name)
+
+  def __eq__(self, other):
+    return self.name == other.name
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
 
 
 class FeatureCppTest(Feature):
@@ -93,22 +113,27 @@ class FeatureCppTest(Feature):
   def get_test_bin_dir(self):
     return os.path.join(self.get_build_directory(), 'test')
 
-  def get_test_names(self):
-    path = self.get_test_src_dir()
-    return [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
+  def get_tests(self):
+    result = list()
+    src_dir = self.get_test_src_dir()
+    for path, _, _ in os.walk(src_dir):
+      if os.path.exists(os.path.join(path, 'CMakeLists.txt')) and \
+         os.path.exists(os.path.join(path, 'test.cpp')):
+        result.append(Test(path.replace(src_dir + os.path.sep, '')))
+    return result
 
-  def run_test(self, name):
+  def run_test(self, test):
     renv = self.renv
 
     build_dir = self.get_build_directory()
     build_cmk = renv.get_prop(Build.PROP_CMK)
     test_cfg = renv.get_prop(OPT_CFG)
 
-    build = [build_cmk, '--build', build_dir, '--target', name, '--config', test_cfg]
+    build = [build_cmk, '--build', build_dir, '--target', test.target, '--config', test_cfg]
     subprocess.call(' '.join(build), stderr=subprocess.STDOUT, shell=True)
 
     suffix = test_cfg.capitalize() if self.build_ftr.is_xcode() else ''
-    exe = os.path.join(self.get_test_bin_dir(), name, suffix, name)
+    exe = os.path.join(self.get_test_bin_dir(), os.path.sep.join(test.path), suffix, test.target)
     subprocess.call(exe, stderr=subprocess.STDOUT, shell=True)
 
 #-ACTIONS-----------------------------------------------------------------------
@@ -118,8 +143,8 @@ class FeatureCppTest(Feature):
 
     build_dir = self.get_build_directory()
     test_cfg = renv.get_prop(OPT_CFG)
-    tests = self.get_test_names()
-    tests = set(tests) & set(renv.get_prop(OPT_TESTS) or tests)
+    tests = self.get_tests()
+    tests = set(tests) & set([Test(n) for n in renv.get_prop(OPT_TESTS)] or tests)
 
     # Always reconfigure the build folder since there might be new tests
     self.build_ftr.configure(build_dir, test_cfg)
@@ -129,34 +154,56 @@ class FeatureCppTest(Feature):
   def action_add(self):
     renv = self.renv
 
-    project_type = renv.get_project_type()
+    test = Test(renv.get_prop(OPT_TEST))
 
-    group = renv.get_prop(OPT_GROUP)
+    for tst in self.get_tests():
+      if test.name == tst.name:
+        print "'{}' already exists".format(test.name)
+        sys.exit(1)
+      if test.name in tst.name:
+        print "'{}' is a group of tests".format(test.name)
+        sys.exit(1)
 
-    if not RE_TEST_ALLOWED_NAME.match(group):
-      print "'{}' is not a valid test name".format(group)
-      sys.exit(1)
+    renv.set_prop(OPT_TEST, test.target, mirror_to_repl=True)
 
-    if group in self.get_test_names():
-      print "'{}' already exists".format(group)
-      sys.exit(1)
+    jdir = os.path.join(renv.get_project_type(), 'other', self.name)
+    jdir_test_group = os.path.join(jdir, 'group')
+    jdir_test = os.path.join(jdir, 'test')
 
-    renv.mirror_props_to_repl([OPT_GROUP, 'project_name'])
+    # Init all folders along test path
+    fullpath = self.get_test_src_dir()
+    path = list(reversed(test.path))
+    final = path[0]
+    path = path[1:]
+    while path:
+      fullpath = os.path.join(fullpath, path.pop())
+      # If this folder already exists we must change nothing
+      if os.path.exists(fullpath):
+        continue
+      self.jinja_ftr.copy_folder(jdir_test_group, fullpath)
 
-    self.jinja_ftr.copy_folder(
-        os.path.join(project_type, 'other', self.name, 'test'),
-        os.path.join(self.get_test_src_dir(), group))
+    fullpath = os.path.join(fullpath, final)
+    self.jinja_ftr.copy_folder(jdir_test, fullpath)
 
   def action_remove(self):
     renv = self.renv
 
-    group = renv.get_prop(OPT_GROUP)
+    test = Test(renv.get_prop(OPT_TEST))
 
-    if not group in self.get_test_names():
-      print "'{}' does not exist".format(group)
+    if test not in self.get_tests():
+      print "'{}' does not exist".format(test.name)
       sys.exit(1)
 
-    shutil.rmtree(os.path.join(self.get_test_src_dir(), group))
+    # Remoev test folder
+    shutil.rmtree(os.path.join(self.get_test_src_dir(), os.path.sep.join(test.path)))
+
+    # Remove empty folders if any
+    path = test.path[:-1]
+    while path:
+      fullpath = os.path.join(self.get_test_src_dir(), os.path.sep.join(path))
+      if len(os.listdir(fullpath)) == 1:
+        shutil.rmtree(fullpath)
+      path.pop()
 
 
 class FeatureCppTestGTest(FeatureCppTest):
