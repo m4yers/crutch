@@ -105,3 +105,33 @@ class FeatureJinja(Feature):
 
       with codecs.open(filename, 'w', 'utf-8') as out:
         out.write(tmpl.render())
+
+
+class FeatureTemp(Feature):
+  """
+  FeatureTemp stores links to files and directories to be destroyed upon CRUTCH
+  exit
+  """
+
+  def __init__(self, renv):
+    super(FeatureTemp, self).__init__(renv)
+    self.files = list()
+    self.directories = list()
+
+#-SUPPORT-----------------------------------------------------------------------
+
+  def clean(self):
+    for path in self.files:
+      if os.path.exists(path):
+        os.remove(path)
+    for path in self.directories:
+      if os.path.exists(path):
+        shutil.rmtree(path)
+
+#-API---------------------------------------------------------------------------
+
+  def add_file(self, path):
+    self.files.append(path)
+
+  def add_directory(self, path):
+    self.directories.append(path)

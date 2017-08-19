@@ -44,10 +44,6 @@ class FeatureNew(Feature):
     renv.set_prop(
         'project_name',
         renv.get_prop('project_name') or os.path.basename(project_directory), True, True)
-    # Remove ourselves from the list
-    renv.set_prop(
-        'project_features',
-        renv.get_prop('project_features')[1:] or 'default', mirror_to_config=True)
 
   def handle(self):
     renv = self.renv
@@ -61,9 +57,15 @@ class FeatureNew(Feature):
     # explicitly and activate its features `manually`. This activation will
     # usually lead to creation of new feature specific replacements used by
     # jinja template render
-    renv.runners.get(project_type)(renv).activate_features()
+    all_ftrs, user_ftrs = renv.runners.get(project_type)(renv).activate_features()
 
-    folders = ['main'] + ['features' + os.path.sep + f for f in renv.get_project_features()]
+    # User requested features contain 'new' and we need to remove it before
+    # mirroring features to config
+    user_ftrs.remove('new')
+
+    renv.set_prop('project_features', user_ftrs, mirror_to_config=True)
+
+    folders = ['main'] + ['features' + os.path.sep + f for f in all_ftrs]
 
     for folder in folders:
       self.jinja_ftr.copy_folder(

@@ -362,7 +362,7 @@ class FeatureCtrl(object):
       for feat_name in cat_active_features:
         renv.set_prop('project_feature_' + feat_name, True, mirror_to_repl=True)
 
-    renv.set_prop('project_features', requested_ftrs, mirror_to_config=True)
+    return feat_order, requested_ftrs
 
   def invoke(self, feature):
     category = self.active_categories.get(feature, None)

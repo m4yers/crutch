@@ -20,37 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import shutil
-import os
-
-class TemporaryFilesManager(object):
-
-  def __init__(self):
-    self.files = list()
-    self.directories = list()
-
-  def add_file(self, path):
-    self.files.append(path)
-
-  def add_directory(self, path):
-    self.directories.append(path)
-
-  def clean(self):
-    did_something = False
-    for path in self.files:
-      if os.path.exists(path):
-        print "Deleting file '{}'".format(path)
-        os.remove(path)
-        did_something = True
-    for path in self.directories:
-      if os.path.exists(path):
-        print "Deleting directory '{}'".format(path)
-        shutil.rmtree(path)
-        did_something = True
-    if not did_something:
-      print "Nothing to clean here..."
-    else:
-      print "Done"
 
 class Runner(object):
 
@@ -68,12 +37,11 @@ class Runner(object):
     self.renv.feature_ctrl.register_feature_class(*args, **kwargs)
 
   def activate_features(self):
-    self.renv.feature_ctrl.activate()
+    return self.renv.feature_ctrl.activate()
 
   def invoke_feature(self, name):
     self.renv.feature_ctrl.invoke(name)
 
   def run(self):
     renv = self.renv
-    self.activate_features()
     self.invoke_feature(renv.get_run_feature() or self.default_run_feature)

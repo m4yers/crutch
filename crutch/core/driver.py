@@ -66,7 +66,10 @@ class Driver(object):
 
     renv.update_config_filename(crutch_config)
 
-    return self.runners.get('new')(renv)
+    runner = self.runners.get('new')(renv)
+    runner.activate_features()
+
+    return runner
 
   def handle_no_args(self, renv):
     # Before we parse anything we need to load current config
@@ -128,10 +131,6 @@ class Driver(object):
     # runtime environment
     renv = self.create_runtime_environment(menu)
 
-    # print renv.props.get_print_info()
-    # print renv.repl.get_print_info()
-    # sys.exit(0)
-
     argv = self.argv[1:]
     renv.set_prop('sys_argv', argv)
 
@@ -143,17 +142,6 @@ class Driver(object):
     else:
       runner = self.handle_normal(renv)
 
-    # if renv.get_action() == 'default' and not os.path.exists(renv.get_prop('crutch_config')):
-    #   print "You cannot invoke default action on non-crutch folder. Exiting..."
-    #   sys.exit(1)
-
-    # print renv.props.get_print_info()
-    # print renv.repl.get_print_info()
-    # sys.exit(0)
-
     runner.run()
-
-    # print renv.props.get_print_info()
-    # print renv.repl.get_print_info()
 
     renv.config_flush()
