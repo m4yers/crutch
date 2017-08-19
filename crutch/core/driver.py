@@ -25,7 +25,7 @@ import os
 
 from crutch.core.menu import create_crutch_menu
 
-from crutch.core.runner import RuntimeEnvironment
+from crutch.core.runtime import RuntimeEnvironment
 
 class Driver(object):
 

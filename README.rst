@@ -78,14 +78,14 @@ features to have are: `install`, `publish`, `debug` etc.
 Feature allows for a second cli parameters parsing, thus you can invoke an
 action for a feature::
 
-  $ crutch test add /core/runner
+  $ crutch test add core/runner
 
 This line invokes `test` feature of the current project with `add` action that
 allows you to add a test file in one go(assuming you are not wearing yours
 smart ass hat and not trying to modify configuration files manually). The
 symmetrical operation would be::
 
-  $ crutch test remove /core/runner
+  $ crutch test remove core/runner
 
 This will remove the test files and do cleanup afterwards. Using `test` feature
 to manage test files is WAY better than doing this manually...

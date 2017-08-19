@@ -194,7 +194,7 @@ class FeatureCppTest(Feature):
       print "'{}' does not exist".format(test.name)
       sys.exit(1)
 
-    # Remoev test folder
+    # Remove test folder
     shutil.rmtree(os.path.join(self.get_test_src_dir(), os.path.sep.join(test.path)))
 
     # Remove empty folders if any
