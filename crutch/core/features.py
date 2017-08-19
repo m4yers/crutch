@@ -27,6 +27,8 @@ import networkx as nx
 
 import crutch.core.lifecycle as Lifecycle
 
+from crutch.core.replacements import GenerativeReplacementsProvider
+
 
 class FeatureMenu(object):
   """
@@ -216,6 +218,21 @@ class FeatureDesc(object):
     self.requires = requires or list()
 
 
+class FeatureCtrlReplProvider(GenerativeReplacementsProvider):
+
+  def __init__(self, renv):
+    self.renv = renv
+    GenerativeReplacementsProvider.__init__(self, dict())
+
+  def generate(self):
+    self.data = dict()
+    for cat_name, cat_instance in self.renv.feature_ctrl.active_categories.items():
+      self.data['project_feature_category_' + cat_name] = True
+      for feat_name in cat_instance.get_active_feature_names():
+        self.data['project_feature_' + feat_name] = True
+    return self.data
+
+
 class FeatureCtrl(object):
 
   def __init__(self, renv):
@@ -226,6 +243,8 @@ class FeatureCtrl(object):
     self.feature_to_category = dict()
 
     self.active_categories = dict()
+
+    renv.repl.add_provider('feature-ctrl-repl', FeatureCtrlReplProvider(renv))
 
   def __repr__(self):
     result = 'FEATURE CTRL' + os.linesep + os.linesep
@@ -388,10 +407,6 @@ class FeatureCtrl(object):
         self.renv.lifecycle.mark(Lifecycle.CATEGORY_CREATE, Lifecycle.ORDER_AFTER, cat_name)
       else:
         cat_instance.activate_features(cat_active_features)
-
-      renv.set_prop('project_feature_category_' + cat_name, True, mirror_to_repl=True)
-      for feat_name in cat_active_features:
-        renv.set_prop('project_feature_' + feat_name, True, mirror_to_repl=True)
 
     self.renv.lifecycle.mark(Lifecycle.FEATURE_ACTIVATION, Lifecycle.ORDER_AFTER)
 
