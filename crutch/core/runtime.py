@@ -22,6 +22,7 @@
 
 from crutch.core.properties import Properties
 from crutch.core.replacements import Replacements
+from crutch.core.features import FeatureCtrl
 
 
 class RuntimeEnvironment(object):
@@ -35,10 +36,7 @@ class RuntimeEnvironment(object):
     self.props = Properties()
     self.repl = Replacements()
     self.prop_to_repl_mirror = self.repl.add_provider('prop_to_repl_mirror', dict())
-    self.feature_ctrl = None
-
-  def set_feature_ctrl(self, ctrl):
-    self.feature_ctrl = ctrl
+    self.feature_ctrl = FeatureCtrl(self)
 
   def update_properties(self, props):
     self.props.update(props)
