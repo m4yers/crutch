@@ -48,10 +48,9 @@ FeatureCategoryCppBuild = create_simple_feature_category(FeatureMenuCppBuild)
 
 class FeatureCppBuild(Feature):
 
-  def __init__(self, renv, name, generator, suffix=''):
+  def __init__(self, renv, name, generator):
     self.name = name
     self.generator = generator
-    self.suffix = suffix
     super(FeatureCppBuild, self).__init__(renv)
 
   def register_menu(self):
@@ -68,6 +67,9 @@ class FeatureCppBuild(Feature):
 
   def is_xcode(self):
     return self.__class__ == FeatureCppBuildXcode
+
+  def get_suffix(self):
+    return ''
 
   def get_build_directory(self, suffix=None):
     crutch_directory = self.renv.get_crutch_directory()
@@ -86,7 +88,7 @@ class FeatureCppBuild(Feature):
 #-ACTIONS-----------------------------------------------------------------------
 
   def action_build(self):
-    build_directory = self.get_build_directory(self.suffix)
+    build_directory = self.get_build_directory(self.get_suffix())
     build_config = self.renv.get_prop(OPT_CFG)
 
     # If not build folder we need to configure cmake first
@@ -104,8 +106,10 @@ class FeatureCppBuild(Feature):
 class FeatureCppBuildMake(FeatureCppBuild):
 
   def __init__(self, renv):
-    super(FeatureCppBuildMake, self).\
-        __init__(renv, 'make', 'Unix Makefiles', renv.get_prop(OPT_CFG))
+    super(FeatureCppBuildMake, self).__init__(renv, 'make', 'Unix Makefiles')
+
+  def get_suffix(self):
+    return self.renv.get_prop(OPT_CFG)
 
 
 class FeatureCppBuildXcode(FeatureCppBuild):
