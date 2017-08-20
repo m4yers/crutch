@@ -39,6 +39,9 @@ class RuntimeEnvReplProvider(GenerativeReplacementsProvider):
     self.data['project_name'] = self.renv.get_project_name()
     self.data['project_type'] = self.renv.get_project_type()
     self.data['project_directory'] = self.renv.get_project_directory()
+    self.data['crutch_python'] = self.renv.get_prop('crutch_python')
+    self.data['crutch_version'] = self.renv.get_prop('crutch_version')
+    self.data['sys_login'] = self.renv.get_prop('sys_login')
     return self.data
 
 class RuntimeEnvironment(object):

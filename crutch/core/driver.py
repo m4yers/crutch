@@ -22,6 +22,7 @@
 
 import sys
 import os
+import io
 
 from crutch.core.menu import create_crutch_menu
 from crutch.core.runtime import RuntimeEnvironment
@@ -36,22 +37,46 @@ class Driver(object):
       argv = sys.argv
     self.argv = argv
 
+  def get_version(self):
+    version = os.path.join(os.path.dirname(__file__), '..', '..', 'VERSION')
+    with io.open(version) as out:
+      return out.read().strip()
+
+  def check_version(self, renv):
+    config_version = renv.props.config.get('crutch_version')
+    config_version_parts = config_version.split('.')
+    this_version = renv.props.defaults.get('crutch_version')
+    this_version_parts = this_version.split('.')
+
+    # Major version mismatch is a no go
+    if config_version_parts[0] != this_version_parts[0]:
+      print 'Major versions are not compatible: project({}) vs crutch({})'\
+          .format(config_version, this_version)
+      sys.exit(1)
+
+    # Minor version of the project cannot be bigger than CRUTCH's
+    if config_version_parts[1] > this_version_parts[1]:
+      print 'Minor versions are not compatible: project({}) vs crutch({})'\
+          .format(config_version, this_version)
+      sys.exit(1)
+
   def create_runtime_environment(self):
     renv = RuntimeEnvironment(self.runners)
     menu = create_crutch_menu(renv)
     renv.menu = menu
 
     defaults = renv.get_default_properties()
-    defaults['sys_login'] = os.getlogin()
-    defaults['sys_python'] = sys.executable
+    defaults['crutch_python'] = sys.executable
+    defaults['crutch_version'] = self.get_version()
 
-    renv.mirror_props_to_repl(defaults.keys())
-    renv.mirror_props_to_config(['sys_python'])
+    renv.mirror_props_to_config(defaults.keys())
+
+    defaults['sys_login'] = os.getlogin()
 
     return renv
 
   def handle_new(self, renv):
-    opts = renv.menu.parse(renv.get_prop('sys_argv'))
+    opts = renv.menu.parse(renv.get_prop('crutch_argv'))
     renv.update_cli_properties(vars(opts))
 
     project_directory = renv.get_project_directory()
@@ -92,6 +117,8 @@ class Driver(object):
     renv.update_config_filename(crutch_config)
     renv.config_load()
 
+    self.check_version(renv)
+
     runner = self.runners.get(renv.get_prop('project_type'))(renv)
     runner.activate_features()
 
@@ -118,10 +145,12 @@ class Driver(object):
     renv.update_config_filename(crutch_config)
     renv.config_load()
 
+    self.check_version(renv)
+
     runner = self.runners.get(renv.get_prop('project_type'))(renv)
     runner.activate_features()
 
-    opts = renv.menu.parse(renv.get_prop('sys_argv'))
+    opts = renv.menu.parse(renv.get_prop('crutch_argv'))
     renv.update_cli_properties(vars(opts))
 
     return runner
@@ -135,7 +164,7 @@ class Driver(object):
     renv.lifecycle.mark(Lifecycle.CRUTCH_START)
 
     argv = self.argv[1:]
-    renv.set_prop('sys_argv', argv)
+    renv.set_prop('crutch_argv', argv)
 
     runner = None
     if not argv:
@@ -149,8 +178,8 @@ class Driver(object):
 
     runner.deactivate_features()
 
-    # print renv.props.get_print_info()
-    # print renv.repl.get_print_info()
+    print renv.props.get_print_info()
+    print renv.repl.get_print_info()
 
     renv.config_flush()
 
