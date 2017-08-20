@@ -22,8 +22,6 @@
 
 from crutch.core.runner import Runner
 
-from crutch.core.features.jinja import FeatureJinja
-
 from crutch.cpp.features.build import FeatureCategoryCppBuild
 from crutch.cpp.features.build import FeatureCppBuildMake, FeatureCppBuildXcode
 
@@ -39,11 +37,6 @@ class RunnerCpp(Runner):
     super(RunnerCpp, self).__init__(renv)
 
     self.register_feature_category_class(
-        'services',
-        features=['jinja'])
-    self.register_feature_class('jinja', FeatureJinja)
-
-    self.register_feature_category_class(
         'build',
         FeatureCategoryCppBuild,
         features=['make', 'xcode'],
@@ -52,12 +45,12 @@ class RunnerCpp(Runner):
     self.register_feature_class('xcode', FeatureCppBuildXcode)
 
     self.register_feature_category_class(
-        'file',
+        'files',
         FeatureCategoryCppFile,
-        features=['file_manager'],
-        defaults=['file_manager'],
+        features=['file'],
+        defaults=['file'],
         requires=['jinja'])
-    self.register_feature_class('file_manager', FeatureCppFileManager)
+    self.register_feature_class('file', FeatureCppFileManager)
 
     self.register_feature_category_class(
         'test',
