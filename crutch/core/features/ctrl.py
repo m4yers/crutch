@@ -91,15 +91,7 @@ class FeatureCtrl(object):
 
     return result
 
-  def register_feature_category_class(self, cat_name, cat_class=FeatureCategory,\
-      features=None, defaults=None, requires=None, singular=True, always=True):
-    self.categories[cat_name] = \
-        CategoryDesc(cat_name, cat_class, features, defaults, requires, singular, always)
-    for feat_name in features:
-      self.feature_to_category[feat_name] = cat_name
-
-  def register_feature_class(self, feat_name, feature_class):
-    self.features[feat_name] = FeatureDesc(feat_name, feature_class, None)
+#-SUPPORT-----------------------------------------------------------------------
 
   def is_category(self, name):
     return name in self.categories
@@ -226,6 +218,18 @@ class FeatureCtrl(object):
 
     return cat_order, feat_order, requested_ftrs
 
+#-API---------------------------------------------------------------------------
+
+  def register_feature_category_class(self, cat_name, cat_class=FeatureCategory,\
+      features=None, defaults=None, requires=None, singular=True, always=True):
+    self.categories[cat_name] = \
+        CategoryDesc(cat_name, cat_class, features, defaults, requires, singular, always)
+    for feat_name in features:
+      self.feature_to_category[feat_name] = cat_name
+
+  def register_feature_class(self, feat_name, feature_class):
+    self.features[feat_name] = FeatureDesc(feat_name, feature_class, None)
+
   def activate(self):
     self.renv.lifecycle.mark_before(Lifecycle.FEATURE_ACTIVATION)
     renv = self.renv
@@ -277,4 +281,3 @@ class FeatureCtrl(object):
     assert cat_name in self.active_categories
     cat = self.active_categories[cat_name]
     return cat.get_active_features()[0]
-

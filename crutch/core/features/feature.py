@@ -42,6 +42,30 @@ class FeatureMenuCppFileManager(FeatureMenu):
     disable.add_argument(dest=OPT_FEATURE, metavar='FEATURE', help='Feature to disable')
 
 
+class FeatureDesc(object):
+
+  def __init__(self, name, enabled):
+    self.name = name
+    self.enabled = enabled
+
+  def __str__(self):
+    return '[Feature {}, active: {}]'.format(self.name, self.enabled)
+
+
+class CategoryDesc(object):
+
+  def __init__(self, name, enabled, features=None):
+    self.name = name
+    self.enabled = enabled
+    self.features = features or list()
+
+  def __str__(self):
+    result = '[Category {}, active: {}]'.format(self.name, self.enabled)
+    for feature in self.features:
+      result += '\n  {}'.format(feature)
+    return result
+
+
 class FeatureFeature(Feature):
 
   def __init__(self, renv):
@@ -50,12 +74,30 @@ class FeatureFeature(Feature):
         handler_view=self.action_view,
         handler_enable=self.action_enable,
         handler_disable=self.action_disable))
-    self.ctrl = renv.feature_ctrl
+
+#-SUPPORT-----------------------------------------------------------------------
+
+  def get_feature_status(self):
+    ctrl = self.renv.feature_ctrl
+    result = list()
+    for cat_name, cat in ctrl.categories.items():
+      cat_instance = ctrl.active_categories.get(cat_name, None)
+      cat_desc = CategoryDesc(cat_name, cat_instance != None)
+      for ftr_name in cat.features:
+        ftr_desc = FeatureDesc(
+            ftr_name,
+            cat_instance != None and ftr_name in cat_instance.get_active_feature_names())
+        cat_desc.features.append(ftr_desc)
+      result.append(cat_desc)
+    return result
 
 #-ACTIONS-----------------------------------------------------------------------
 
   def action_view(self):
-    print 'HERE'
+    status = self.get_feature_status()
+    print 'FEATURE VIEW:'
+    for cat_desc in status:
+      print '\n{}'.format(cat_desc)
 
   def action_enable(self):
     pass
