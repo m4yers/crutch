@@ -20,8 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os
-
 import crutch.core.lifecycle as Lifecycle
 
 
@@ -52,27 +50,21 @@ class FeatureProto(object):
   handling basic feature requests
   """
 
-  def __init__(self, renv):
+  def __init__(self, renv, menu=None):
     self.renv = renv
-    self.menu = self.register_menu()
-
-  def register_menu(self):
-    """
-    Here you create and return feature's menu actions if any
-    """
-    pass
+    self.menu = menu
 
   def activate(self):
     """
-    Activation actions done by a feature or category. This is called whe
-    CRUTCH is about to execute runner
+    Activation actions done by a feature or category. This is called during
+    feature or category construction
     """
     pass
 
   def deactivate(self):
     """
-    Deactivation actions done by a feature or category. This is called when
-    CRUTCH is about to exit
+    Deactivation actions done by a feature or category. This is called during
+    feature or category destruction upon CRUTCH exit
     """
     pass
 
@@ -100,26 +92,6 @@ class Feature(FeatureProto):
   cannot be split further
   """
 
-  def __init__(self, renv):
-    super(Feature, self).__init__(renv)
-    self.register_properties()
-    self.register_files()
-
-  def register_files(self):
-    """
-    Here you add your feature files and folders, so they can be removed if
-    a programmer decides to remove the feature. Also you may register any temp
-    files or directories so `clean` feature may remove them
-    """
-    pass
-
-  def register_properties(self):
-    """
-    Here you define/save all you properties to be mirrored to config or repl
-    """
-    project_directory = os.path.abspath(self.renv.get_prop('project_directory'))
-    self.renv.set_prop('project_directory', project_directory)
-
   def handle(self):
     action = self.renv.get_prop('action')
     self.menu.handlers.get(action)()
@@ -132,8 +104,8 @@ class FeatureCategory(FeatureProto):
   can be called separately as well.
   """
 
-  def __init__(self, renv, features):
-    super(FeatureCategory, self).__init__(renv)
+  def __init__(self, renv, features, menu=None):
+    super(FeatureCategory, self).__init__(renv, menu)
     self.features = features
     self.active_features = dict()
 
@@ -143,20 +115,20 @@ class FeatureCategory(FeatureProto):
   def activate_feature(self, feature_name):
     if feature_name in self.active_features:
       return
-    self.renv.lifecycle.mark(Lifecycle.FEATURE_CREATE, Lifecycle.ORDER_BEFORE, feature_name)
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_CREATE, feature_name)
     instance = self.features[feature_name](self.renv)
     self.active_features[feature_name] = instance
     instance.activate()
-    self.renv.lifecycle.mark(Lifecycle.FEATURE_CREATE, Lifecycle.ORDER_AFTER, feature_name)
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_CREATE, feature_name)
 
   def deactivate_feature(self, feature_name):
-    self.renv.lifecycle.mark(Lifecycle.FEATURE_DESTROY, Lifecycle.ORDER_BEFORE, feature_name)
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DESTROY, feature_name)
     feature = self.active_features.get(feature_name, None)
     if not feature:
       raise Exception("You cannot deactivate non-active feature")
     feature.deactivate()
     del self.active_features[feature_name]
-    self.renv.lifecycle.mark(Lifecycle.FEATURE_DESTROY, Lifecycle.ORDER_BEFORE, feature_name)
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DESTROY, feature_name)
 
   def get_active_feature_names(self):
     return self.active_features.keys()
@@ -189,6 +161,6 @@ class FeatureCategory(FeatureProto):
 
 def create_simple_feature_category(menu):
   class SimpleFeatureCategoryWithMenu(FeatureCategory):
-    def register_menu(self):
-      return menu(self.renv)
+    def __init__(self, renv, features):
+      super(SimpleFeatureCategoryWithMenu, self).__init__(renv, features, menu(renv))
   return SimpleFeatureCategoryWithMenu

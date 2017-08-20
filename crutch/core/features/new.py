@@ -23,7 +23,6 @@
 import os
 
 from crutch.core.features.basics import Feature
-from crutch.core.runner import Runner
 
 
 class FeatureNew(Feature):
@@ -32,24 +31,24 @@ class FeatureNew(Feature):
     self.jinja_ftr = renv.feature_ctrl.get_active_feature('jinja')
     super(FeatureNew, self).__init__(renv)
 
-  def register_properties(self):
-    super(FeatureNew, self).register_properties()
+  def handle(self):
     renv = self.renv
 
     project_directory = renv.get_project_directory()
+    project_type = renv.get_project_type()
 
-    renv.set_prop('project_username', renv.get_prop('sys_login'), mirror_to_config=True)
-    renv.set_prop('project_type', renv.get_prop('project_type'), mirror_to_config=True)
+    # Mirror some project properties to config
+    renv.set_prop(
+        'project_username',
+        renv.get_prop('project_username') or renv.get_prop('sys_login'),
+        mirror_to_config=True)
+
     renv.set_prop(
         'project_name',
         renv.get_prop('project_name') or os.path.basename(project_directory),
         mirror_to_config=True)
 
-  def handle(self):
-    renv = self.renv
-
-    project_type = renv.get_project_type()
-    project_directory = renv.get_project_directory()
+    renv.set_prop('project_type', project_type, mirror_to_config=True)
 
     # We need to activate features for the current project type, since we are
     # already within a `new` feature runner we create type specific runner
@@ -58,13 +57,9 @@ class FeatureNew(Feature):
     # jinja template render
     all_ftrs, user_ftrs = renv.runners.get(project_type)(renv).activate_features()
 
-    # User requested features contain 'new' and we need to remove it before
-    # mirroring features to config
-    user_ftrs.remove('new')
-
     renv.set_prop('project_features', user_ftrs, mirror_to_config=True)
 
-    folders = ['main'] + ['features' + os.path.sep + f for f in all_ftrs]
+    folders = ['main'] + [os.path.join('features', f) for f in all_ftrs]
 
     psub = {'ProjectNameRepl': renv.get_project_name()}
 
@@ -73,16 +68,3 @@ class FeatureNew(Feature):
           os.path.join(project_type, folder),
           project_directory,
           psub)
-
-
-class RunnerNew(Runner):
-
-  def __init__(self, renv):
-    super(RunnerNew, self).__init__(renv)
-
-    self.register_feature_category_class(
-        'crutch',
-        features=['new'],
-        defaults=['new'],
-        requires=['jinja'])
-    self.register_feature_class('new', FeatureNew)

@@ -77,7 +77,7 @@ class Driver(object):
 
   def handle_new(self, renv):
     opts = renv.menu.parse(renv.get_prop('crutch_argv'))
-    renv.update_cli_properties(vars(opts))
+    renv.update_cli_properties(opts)
 
     project_directory = renv.get_project_directory()
     crutch_directory = os.path.join(project_directory, '.crutch')
@@ -123,7 +123,7 @@ class Driver(object):
     runner.activate_features()
 
     opts = renv.menu.parse([runner.default_run_feature])
-    renv.update_cli_properties(vars(opts))
+    renv.update_cli_properties(opts)
 
     return runner
 
@@ -151,7 +151,7 @@ class Driver(object):
     runner.activate_features()
 
     opts = renv.menu.parse(renv.get_prop('crutch_argv'))
-    renv.update_cli_properties(vars(opts))
+    renv.update_cli_properties(opts)
 
     return runner
 

@@ -24,6 +24,7 @@ import crutch.core.lifecycle as Lifecycle
 
 from crutch.core.features.jinja import FeatureJinja
 from crutch.core.features.feature import FeatureFeature
+from crutch.core.features.new import FeatureNew
 
 
 class Runner(object):
@@ -33,12 +34,13 @@ class Runner(object):
     self.default_run_feature = None
 
     self.register_feature_category_class(
-        'services',
-        features=['jinja', 'feature'],
-        defaults=['feature'],
+        'crutch',
+        features=['jinja', 'feature', 'new'],
+        defaults=['jinja', 'feature', 'new'],
         singular=False)
     self.register_feature_class('jinja', FeatureJinja)
     self.register_feature_class('feature', FeatureFeature)
+    self.register_feature_class('new', FeatureNew)
 
   def register_default_run_feature(self, name):
     self.default_run_feature = name

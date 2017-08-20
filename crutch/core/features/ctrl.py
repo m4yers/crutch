@@ -32,13 +32,14 @@ from crutch.core.replacements import GenerativeReplacementsProvider
 
 class CategoryDesc(object):
 
-  def __init__(self, name, init, features, defaults, requires, singular):
+  def __init__(self, name, init, features, defaults, requires, singular, always):
     self.name = name
     self.init = init
     self.features = features or list()
     self.defaults = defaults or list()
     self.requires = requires or list()
     self.singular = singular
+    self.always = always
 
 
 class FeatureDesc(object):
@@ -91,9 +92,9 @@ class FeatureCtrl(object):
     return result
 
   def register_feature_category_class(self, cat_name, cat_class=FeatureCategory,\
-      features=None, defaults=None, requires=None, singular=True):
+      features=None, defaults=None, requires=None, singular=True, always=True):
     self.categories[cat_name] = \
-        CategoryDesc(cat_name, cat_class, features, defaults, requires, singular)
+        CategoryDesc(cat_name, cat_class, features, defaults, requires, singular, always)
     for feat_name in features:
       self.feature_to_category[feat_name] = cat_name
 
@@ -149,6 +150,10 @@ class FeatureCtrl(object):
           features.append(name)
           result[cat_name] = features
 
+        # Always instantiated default CRUTCH category defaults
+        crutch_category = self.categories['crutch']
+        result['crutch'] = crutch_category.defaults
+
     return result
 
   def build_dependency_graph(self, cat_to_feats):
@@ -201,7 +206,9 @@ class FeatureCtrl(object):
     Build category and feature instantiation order
     """
     cat_to_feats = self.normalize_project_features()
-    requested_ftrs = sum([f for f in cat_to_feats.values()], [])
+    # Ignore CRUTCH services, they are specially handler and do not require
+    # explicit mentioning
+    requested_ftrs = sum([cat_to_feats[c] for c in cat_to_feats if c != 'crutch'], [])
     graph, cat_to_feats = self.build_dependency_graph(cat_to_feats)
 
     # If not DAG we cannot build graph's topology
@@ -220,7 +227,7 @@ class FeatureCtrl(object):
     return cat_order, feat_order, requested_ftrs
 
   def activate(self):
-    self.renv.lifecycle.mark(Lifecycle.FEATURE_ACTIVATION, Lifecycle.ORDER_BEFORE)
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_ACTIVATION)
     renv = self.renv
     cat_order, feat_order, requested_ftrs = self.get_init_order()
 
@@ -230,22 +237,22 @@ class FeatureCtrl(object):
       cat_instance = self.active_categories.get(cat_name, None)
 
       if not cat_instance:
-        self.renv.lifecycle.mark(Lifecycle.CATEGORY_CREATE, Lifecycle.ORDER_BEFORE, cat_name)
+        self.renv.lifecycle.mark_before(Lifecycle.CATEGORY_CREATE, cat_name)
         cat_instance = cat.init(renv, {n: self.features[n].init for n in cat.features})
         cat_instance.activate()
         self.active_categories[cat_name] = cat_instance
         cat_instance.activate_features(cat_active_features)
-        self.renv.lifecycle.mark(Lifecycle.CATEGORY_CREATE, Lifecycle.ORDER_AFTER, cat_name)
+        self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_CREATE, cat_name)
       else:
         cat_instance.activate_features(cat_active_features)
 
-    self.renv.lifecycle.mark(Lifecycle.FEATURE_ACTIVATION, Lifecycle.ORDER_AFTER)
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_ACTIVATION)
 
     return feat_order, requested_ftrs
 
   def deactivate(self):
-    self.renv.lifecycle.mark(Lifecycle.FEATURE_DEACTIVATION, Lifecycle.ORDER_BEFORE)
-    self.renv.lifecycle.mark(Lifecycle.FEATURE_DEACTIVATION, Lifecycle.ORDER_AFTER)
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DEACTIVATION)
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DEACTIVATION)
 
   def invoke(self, feature):
     category = self.active_categories.get(feature, None)

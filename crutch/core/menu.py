@@ -27,6 +27,7 @@ menu in CRUTCH related terms and not just parsers and subparsers
 
 import argparse
 import sys
+import os
 
 import crutch.core.lifecycle as Lifecycle
 
@@ -68,7 +69,11 @@ class Menu(object):
 
     self.renv.lifecycle.mark(Lifecycle.CMD_PARSE, Lifecycle.ORDER_AFTER)
 
-    return self.parser.parse_args(argv)
+    # Normalize project_directory
+    opts = vars(self.parser.parse_args(argv))
+    opts['project_directory'] = os.path.abspath(opts['project_directory'])
+
+    return opts
 
 
 class MenuActions(object):

@@ -45,15 +45,12 @@ class FeatureMenuCppFileManager(FeatureMenu):
 class FeatureFeature(Feature):
 
   def __init__(self, renv):
-    super(FeatureFeature, self).__init__(renv)
-    self.ctrl = renv.feature_ctrl
-
-  def register_menu(self):
-    return FeatureMenuCppFileManager(
-        self.renv,
+    super(FeatureFeature, self).__init__(renv, FeatureMenuCppFileManager(
+        renv,
         handler_view=self.action_view,
         handler_enable=self.action_enable,
-        handler_disable=self.action_disable)
+        handler_disable=self.action_disable))
+    self.ctrl = renv.feature_ctrl
 
 #-ACTIONS-----------------------------------------------------------------------
 

@@ -89,15 +89,12 @@ class FeatureCppTest(Feature):
     self.name = name
     self.build_ftr = renv.feature_ctrl.get_singular_active_feature(Build.NAME)
     self.jinja_ftr = renv.feature_ctrl.get_active_feature('jinja')
-    super(FeatureCppTest, self).__init__(renv)
-
-  def register_menu(self):
-    return FeatureMenuCppTest(
-        self.renv,
-        self.name,
+    super(FeatureCppTest, self).__init__(renv, FeatureMenuCppTest(
+        renv,
+        name,
         handler_default=self.action_default,
         handler_add=self.action_add,
-        handler_remove=self.action_remove)
+        handler_remove=self.action_remove))
 
 #-SUPPORT-----------------------------------------------------------------------
 

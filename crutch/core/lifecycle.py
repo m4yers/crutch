@@ -94,3 +94,9 @@ class Lifecycle(object):
 
     for hook in orders[order]:
       hook(info)
+
+  def mark_before(self, phase, info=''):
+    self.mark(phase, ORDER_BEFORE, info)
+
+  def mark_after(self, phase, info=''):
+    self.mark(phase, ORDER_AFTER, info)

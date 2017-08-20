@@ -51,13 +51,8 @@ class FeatureCppBuild(Feature):
   def __init__(self, renv, name, generator):
     self.name = name
     self.generator = generator
-    super(FeatureCppBuild, self).__init__(renv)
-
-  def register_menu(self):
-    return FeatureMenuCppBuild(self.renv, self.name, self.action_build)
-
-  def register_properties(self):
-    super(FeatureCppBuild, self).register_properties()
+    super(FeatureCppBuild, self).__init__(renv, FeatureMenuCppBuild(\
+        renv, name, self.action_build))
     self.renv.set_prop_if_not_in(PROP_CMK, 'cmake', mirror_to_config=True)
 
 #-SUPPORT-----------------------------------------------------------------------

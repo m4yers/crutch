@@ -111,13 +111,10 @@ class FeatureCppFileManager(Feature):
 
   def __init__(self, renv):
     self.jinja_ftr = renv.feature_ctrl.get_active_feature('jinja')
-    super(FeatureCppFileManager, self).__init__(renv)
-
-  def register_menu(self):
-    return FeatureMenuCppFileManager(
-        self.renv,
+    super(FeatureCppFileManager, self).__init__(renv, FeatureMenuCppFileManager(
+        renv,
         handler_add=self.action_add,
-        handler_remove=self.action_remove)
+        handler_remove=self.action_remove))
 
 #-API---------------------------------------------------------------------------
 
