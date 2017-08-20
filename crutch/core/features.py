@@ -259,8 +259,8 @@ class FeatureCtrl(object):
 
     return result
 
-  def register_feature_category_class(self, cat_name, cat_class, features,\
-      defaults=None, requires=None, singular=True):
+  def register_feature_category_class(self, cat_name, cat_class=FeatureCategory,\
+      features=None, defaults=None, requires=None, singular=True):
     self.categories[cat_name] = \
         CategoryDesc(cat_name, cat_class, features, defaults, requires, singular)
     for feat_name in features:

@@ -22,8 +22,8 @@
 
 import os
 
-from crutch.core.services import FeatureJinja
-from crutch.core.features import Feature, FeatureCategory
+from crutch.core.services.jinja import FeatureJinja
+from crutch.core.features import Feature
 from crutch.core.runner import Runner
 
 
@@ -83,14 +83,12 @@ class RunnerNew(Runner):
 
     self.register_feature_category_class(
         'services',
-        FeatureCategory,
         features=['jinja'],
         defaults=['jinja'])
     self.register_feature_class('jinja', FeatureJinja)
 
     self.register_feature_category_class(
         'crutch',
-        FeatureCategory,
         features=['new'],
         defaults=['new'],
         requires=['jinja'])
