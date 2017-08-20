@@ -29,7 +29,7 @@ from pkg_resources import Requirement, resource_filename
 
 import jinja2
 
-from crutch.core.features import Feature
+from crutch.core.features.basics import Feature
 
 
 RE_VERSION = re.compile(r'\d+\.\d+\.\d+')

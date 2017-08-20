@@ -22,8 +22,8 @@
 
 import os
 
-from crutch.core.services.jinja import FeatureJinja
-from crutch.core.features import Feature
+from crutch.core.features.jinja import FeatureJinja
+from crutch.core.features.basics import Feature
 from crutch.core.runner import Runner
 
 

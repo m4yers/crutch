@@ -22,7 +22,7 @@
 
 from crutch.core.runner import Runner
 
-from crutch.core.services.jinja import FeatureJinja
+from crutch.core.features.jinja import FeatureJinja
 
 from crutch.cpp.features.build import FeatureCategoryCppBuild
 from crutch.cpp.features.build import FeatureCppBuildMake, FeatureCppBuildXcode

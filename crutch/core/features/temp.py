@@ -23,7 +23,7 @@
 import shutil
 import os
 
-from crutch.core.features import Feature
+from crutch.core.features.basics import Feature
 
 class FeatureTemp(Feature):
   """

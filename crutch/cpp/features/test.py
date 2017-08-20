@@ -25,8 +25,8 @@ import shutil
 import sys
 import os
 
-from crutch.core.features import create_simple_feature_category
-from crutch.core.features import Feature, FeatureMenu
+from crutch.core.features.basics import create_simple_feature_category
+from crutch.core.features.basics import Feature, FeatureMenu
 
 import crutch.cpp.features.build as Build
 

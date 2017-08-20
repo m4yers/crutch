@@ -22,7 +22,7 @@
 
 from crutch.core.properties import Properties
 from crutch.core.replacements import Replacements, GenerativeReplacementsProvider
-from crutch.core.features import FeatureCtrl
+from crutch.core.features.ctrl import FeatureCtrl
 
 import crutch.core.lifecycle as Lifecycle
 
