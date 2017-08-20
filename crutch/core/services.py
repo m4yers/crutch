@@ -35,7 +35,6 @@ from crutch.core.features import Feature
 NAME = 'services'
 RE_VERSION = re.compile(r'\d+\.\d+\.\d+')
 RE_DOT_HIDDEN = re.compile(r'.*/\..*$')
-RE_PROJECT_NAME = re.compile(r'ProjectNameRepl')
 RE_JINJA_EXT = re.compile(r'\.(j2|jinja|jinja2)$')
 RE_JINJA_FILE = re.compile(r'.*\.(j2|jinja|jinja2)$')
 
@@ -66,11 +65,8 @@ class FeatureJinja(Feature):
 
 #-API---------------------------------------------------------------------------
 
-  def copy_folder(self, src_dir, dst_dir):
-    renv = self.renv
+  def copy_folder(self, src_dir, dst_dir, path_repl=None):
     jenv = self.jenv
-
-    project_name = renv.get_project_name()
 
     self.mirror_repl_to_jinja_globals()
 
@@ -79,7 +75,13 @@ class FeatureJinja(Feature):
 
     for tmpl_src in templates:
       filename = re_tmpl_prefix.sub('', tmpl_src)
-      filename = RE_PROJECT_NAME.sub(project_name, filename)
+
+      # Apply path substitutions if any
+      if path_repl:
+        for repl in path_repl.keys():
+          regex = re.compile(repl)
+          filename = regex.sub(path_repl[repl], filename)
+
       filename = dst_dir + filename
 
       # Do not override existing files

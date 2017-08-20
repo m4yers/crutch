@@ -170,6 +170,8 @@ class FeatureCppTest(Feature):
     jdir_test_group = os.path.join(jdir, 'group')
     jdir_test = os.path.join(jdir, 'test')
 
+    psub = {'ProjectNameRepl': renv.get_project_name()}
+
     # Init all folders along test path
     fullpath = self.get_test_src_dir()
     path = list(reversed(test.path))
@@ -180,10 +182,10 @@ class FeatureCppTest(Feature):
       # If this folder already exists we must change nothing
       if os.path.exists(fullpath):
         continue
-      self.jinja_ftr.copy_folder(jdir_test_group, fullpath)
+      self.jinja_ftr.copy_folder(jdir_test_group, fullpath, psub)
 
     fullpath = os.path.join(fullpath, final)
-    self.jinja_ftr.copy_folder(jdir_test, fullpath)
+    self.jinja_ftr.copy_folder(jdir_test, fullpath, psub)
 
   def action_remove(self):
     renv = self.renv

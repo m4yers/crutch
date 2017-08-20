@@ -67,10 +67,13 @@ class FeatureNew(Feature):
 
     folders = ['main'] + ['features' + os.path.sep + f for f in all_ftrs]
 
+    psub = {'ProjectNameRepl': renv.get_project_name()}
+
     for folder in folders:
       self.jinja_ftr.copy_folder(
           os.path.join(project_type, folder),
-          project_directory)
+          project_directory,
+          psub)
 
 
 class RunnerNew(Runner):

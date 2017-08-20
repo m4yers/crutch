@@ -178,8 +178,8 @@ class Driver(object):
 
     runner.deactivate_features()
 
-    print renv.props.get_print_info()
-    print renv.repl.get_print_info()
+    # print renv.props.get_print_info()
+    # print renv.repl.get_print_info()
 
     renv.config_flush()
 

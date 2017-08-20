@@ -28,6 +28,9 @@ from crutch.core.features import FeatureCategory
 from crutch.cpp.features.build import FeatureCategoryCppBuild
 from crutch.cpp.features.build import FeatureCppBuildMake, FeatureCppBuildXcode
 
+from crutch.cpp.features.file import FeatureCategoryCppFile
+from crutch.cpp.features.file import FeatureCppFileManager
+
 from crutch.cpp.features.test import FeatureCategoryCppTest
 from crutch.cpp.features.test import FeatureCppTestGTest
 
@@ -49,6 +52,14 @@ class RunnerCpp(Runner):
         defaults=['make'])
     self.register_feature_class('make', FeatureCppBuildMake)
     self.register_feature_class('xcode', FeatureCppBuildXcode)
+
+    self.register_feature_category_class(
+        'file',
+        FeatureCategoryCppFile,
+        features=['file_manager'],
+        defaults=['file_manager'],
+        requires=['jinja'])
+    self.register_feature_class('file_manager', FeatureCppFileManager)
 
     self.register_feature_category_class(
         'test',
