@@ -131,7 +131,7 @@ class FeatureFeature(Feature):
     name = renv.get_prop(OPT_FEATURE)
     status = self.get_status(name)
     if status.active:
-      print "Category '{}' already enabled".format(name)
+      print "Feature '{}' already enabled".format(name)
       sys.exit(1)
     else:
       _, requested_ftrs = ctrl.activate_features([name])
@@ -139,4 +139,23 @@ class FeatureFeature(Feature):
       renv.set_prop('project_features', user_ftrs, mirror_to_config=True)
 
   def action_disable(self):
-    pass
+    renv = self.renv
+    ctrl = renv.feature_ctrl
+    name = renv.get_prop(OPT_FEATURE)
+    status = self.get_status(name)
+    if status.active:
+      normalized = ctrl.normalize_project_features([name])
+      ftr_name = sum(normalized.values(), [])[0]
+      project_features = renv.get_project_features()
+      # We can only remove an explicit feature, all dependency features won't be in that list,
+      # unless feature is explicit and is a dependency at the same time, in this case it is still
+      # alright because it will be instantiated next time as an implicit dependency if needed
+      if ftr_name in project_features:
+        project_features.remove(ftr_name)
+        renv.set_prop('project_features', project_features, mirror_to_config=True)
+      else:
+        print "You cannot disable a feature that is a dependency of another"
+        sys.exit(1)
+    else:
+      print "Feature '{}' is not enabled".format(name)
+      sys.exit(1)
