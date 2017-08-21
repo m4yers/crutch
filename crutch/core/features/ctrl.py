@@ -58,9 +58,9 @@ class FeatureCtrlReplProvider(GenerativeReplacementsProvider):
 
   def generate(self):
     self.data = dict()
-    for cat_name, cat_instance in self.renv.feature_ctrl.active_categories.items():
+    for cat_name, cat_inst in self.renv.feature_ctrl.active_categories.items():
       self.data['project_feature_category_' + cat_name] = True
-      for feat_name in cat_instance.get_active_feature_names():
+      for feat_name in cat_inst.get_active_feature_names():
         self.data['project_feature_' + feat_name] = True
     return self.data
 
@@ -114,19 +114,17 @@ class FeatureCtrl(object):
 
     return req_cat_name, req_cat_feat
 
-  def normalize_project_features(self):
-    project_features = self.renv.get_prop('project_features')
-
+  def normalize_project_features(self, features):
     result = dict()
 
-    if project_features == 'default':
+    if features == 'default':
       for cat_name, cat in self.categories.items():
         if cat.defaults:
           result[cat_name] = cat.defaults
 
-    elif project_features:
+    elif features:
 
-      for name in project_features:
+      for name in features:
 
         if self.is_category(name):
           if name in result:
@@ -193,11 +191,11 @@ class FeatureCtrl(object):
 
     return graph, cat_to_feats
 
-  def get_init_order(self):
+  def get_init_order(self, features):
     """
     Build category and feature instantiation order
     """
-    cat_to_feats = self.normalize_project_features()
+    cat_to_feats = self.normalize_project_features(features)
     # Ignore CRUTCH services, they are specially handler and do not require
     # explicit mentioning
     requested_ftrs = sum([cat_to_feats[c] for c in cat_to_feats if c != 'crutch'], [])
@@ -218,6 +216,44 @@ class FeatureCtrl(object):
 
     return cat_order, feat_order, requested_ftrs
 
+  def activate_features(self, features):
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_ACTIVATION)
+
+    renv = self.renv
+    cat_order, feat_order, requested_ftrs = self.get_init_order(features)
+
+    for cat_name in cat_order:
+      cat_desc = self.categories[cat_name]
+      cat_active_features = [f for f in feat_order if f in cat_desc.features]
+      cat_inst = self.active_categories.get(cat_name, None)
+
+      if not cat_inst:
+        self.renv.lifecycle.mark_before(Lifecycle.CATEGORY_CREATE, cat_name)
+        cat_inst = cat_desc.init(
+            renv,
+            {n: self.features[n].init for n in cat_desc.features})
+        cat_inst.activate()
+        self.active_categories[cat_name] = cat_inst
+        cat_inst.activate_features(cat_active_features)
+        self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_CREATE, cat_name)
+      else:
+        # If the category is active and singular we cannot enable more features in it
+        if cat_desc.singular and cat_inst.get_active_features():
+          # If the category or one of its features were requested explicityly we need to nofity user
+          if cat_name in features or set(cat_active_features) & set(features):
+            print str(
+                "Cannot activate feature '{}', since its category '{}' supports only " +
+                "one active feature at a time").format(cat_active_features[0], cat_name)
+            sys.exit(1)
+          # otherwise we can just continue
+          else:
+            continue
+        cat_inst.activate_features(cat_active_features)
+
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_ACTIVATION)
+
+    return feat_order, requested_ftrs
+
 #-API---------------------------------------------------------------------------
 
   def register_feature_category_class(self, cat_name, cat_class=FeatureCategory,\
@@ -231,28 +267,7 @@ class FeatureCtrl(object):
     self.features[feat_name] = FeatureDesc(feat_name, feature_class, None)
 
   def activate(self):
-    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_ACTIVATION)
-    renv = self.renv
-    cat_order, feat_order, requested_ftrs = self.get_init_order()
-
-    for cat_name in cat_order:
-      cat = self.categories[cat_name]
-      cat_active_features = [f for f in feat_order if f in cat.features]
-      cat_instance = self.active_categories.get(cat_name, None)
-
-      if not cat_instance:
-        self.renv.lifecycle.mark_before(Lifecycle.CATEGORY_CREATE, cat_name)
-        cat_instance = cat.init(renv, {n: self.features[n].init for n in cat.features})
-        cat_instance.activate()
-        self.active_categories[cat_name] = cat_instance
-        cat_instance.activate_features(cat_active_features)
-        self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_CREATE, cat_name)
-      else:
-        cat_instance.activate_features(cat_active_features)
-
-    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_ACTIVATION)
-
-    return feat_order, requested_ftrs
+    return self.activate_features(self.renv.get_project_features())
 
   def deactivate(self):
     self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DEACTIVATION)

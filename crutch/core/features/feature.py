@@ -20,6 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import sys
 
 from crutch.core.features.basics import Feature, FeatureMenu
 
@@ -42,25 +43,27 @@ class FeatureMenuCppFileManager(FeatureMenu):
     disable.add_argument(dest=OPT_FEATURE, metavar='FEATURE', help='Feature to disable')
 
 
-class FeatureDesc(object):
+class FeatureStatus(object):
 
-  def __init__(self, name, enabled):
+  def __init__(self, name, desc, active):
     self.name = name
-    self.enabled = enabled
+    self.desc = desc
+    self.active = active
 
   def __str__(self):
-    return '[Feature {}, active: {}]'.format(self.name, self.enabled)
+    return '[Feature {}, active: {}]'.format(self.name, self.active)
 
 
-class CategoryDesc(object):
+class CategoryStatus(object):
 
-  def __init__(self, name, enabled, features=None):
+  def __init__(self, name, desc, active, features=None):
     self.name = name
-    self.enabled = enabled
+    self.desc = desc
+    self.active = active
     self.features = features or list()
 
   def __str__(self):
-    result = '[Category {}, active: {}]'.format(self.name, self.enabled)
+    result = '[Category {}, active: {}]'.format(self.name, self.active)
     for feature in self.features:
       result += '\n  {}'.format(feature)
     return result
@@ -77,30 +80,63 @@ class FeatureFeature(Feature):
 
 #-SUPPORT-----------------------------------------------------------------------
 
-  def get_feature_status(self):
+  def get_feature_status(self, ftr_name):
     ctrl = self.renv.feature_ctrl
-    result = list()
-    for cat_name, cat in ctrl.categories.items():
-      cat_instance = ctrl.active_categories.get(cat_name, None)
-      cat_desc = CategoryDesc(cat_name, cat_instance != None)
-      for ftr_name in cat.features:
-        ftr_desc = FeatureDesc(
-            ftr_name,
-            cat_instance != None and ftr_name in cat_instance.get_active_feature_names())
-        cat_desc.features.append(ftr_desc)
-      result.append(cat_desc)
-    return result
+    cat_name = ctrl.feature_to_category[ftr_name]
+    cat_inst = ctrl.active_categories.get(cat_name, None)
+    return FeatureStatus(
+        ftr_name,
+        ctrl.features[ftr_name],
+        cat_inst != None and ftr_name in cat_inst.get_active_feature_names())
+
+  def get_category_status(self, cat_name):
+    ctrl = self.renv.feature_ctrl
+    cat_desc = ctrl.categories[cat_name]
+    cat_inst = ctrl.active_categories.get(cat_name, None)
+    cat_status = CategoryStatus(cat_name, cat_desc, cat_inst != None)
+    for ftr_name in cat_desc.features:
+      ftr_status = FeatureStatus(
+          ftr_name,
+          ctrl.features[ftr_name],
+          cat_inst != None and ftr_name in cat_inst.get_active_feature_names())
+      cat_status.features.append(ftr_status)
+    return cat_status
+
+  def get_categories_status(self):
+    ctrl = self.renv.feature_ctrl
+    return [self.get_category_status(c) for c in ctrl.categories.keys()]
+
+  def get_status(self, name):
+    if self.is_category(name):
+      return self.get_category_status(name)
+    return self.get_feature_status(name)
+
+  def is_category(self, name):
+    return self.renv.feature_ctrl.is_category(name)
+
+  def is_feature(self, name):
+    return self.renv.feature_ctrl.is_feature(name)
+
 
 #-ACTIONS-----------------------------------------------------------------------
 
   def action_view(self):
-    status = self.get_feature_status()
     print 'FEATURE VIEW:'
-    for cat_desc in status:
-      print '\n{}'.format(cat_desc)
+    for cat_status in self.get_categories_status():
+      print '\n{}'.format(cat_status)
 
   def action_enable(self):
-    pass
+    renv = self.renv
+    ctrl = renv.feature_ctrl
+    name = renv.get_prop(OPT_FEATURE)
+    status = self.get_status(name)
+    if status.active:
+      print "Category '{}' already enabled".format(name)
+      sys.exit(1)
+    else:
+      _, requested_ftrs = ctrl.activate_features([name])
+      user_ftrs = list(set(renv.get_project_features()) | set(requested_ftrs))
+      renv.set_prop('project_features', user_ftrs, mirror_to_config=True)
 
   def action_disable(self):
     pass
