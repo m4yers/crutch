@@ -20,223 +20,174 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import unicode_literals
+from __future__ import print_function
+
 import sys
 import os
 import io
 
+import crutch.core.runtime as Runtime
+
 from crutch.core.menu import create_crutch_menu
-from crutch.core.runtime import RuntimeEnvironment
-
 from crutch.core.repl.prompt import Prompt
-
-import crutch.core.lifecycle as Lifecycle
 
 class Driver(object):
 
   def __init__(self, runners, argv=None):
     self.runners = runners
-    if argv is None:
-      argv = sys.argv
-    self.argv = argv
+    self.argv = argv or sys.argv
+    self.renv = None
+
+  def check_crutch_config(self):
+    if not os.path.exists(self.renv.get_prop('crutch_config')):
+      self.renv.stop(
+          Runtime.EPERM,
+          'You cannot invoke default CRUTCH action on non-initialized directory')
 
   def get_version(self):
     version = os.path.join(os.path.dirname(__file__), '..', '..', 'VERSION')
     with io.open(version) as out:
       return out.read().strip()
 
-  def check_version(self, renv):
-    config_version = renv.props.config.get('crutch_version')
+  def check_version(self):
+    config_version = self.renv.props.config.get('crutch_version')
     config_version_parts = config_version.split('.')
-    this_version = renv.props.defaults.get('crutch_version')
+    this_version = self.renv.props.defaults.get('crutch_version')
     this_version_parts = this_version.split('.')
 
     # Major version mismatch is a no go
     if config_version_parts[0] != this_version_parts[0]:
-      print 'Major versions are not compatible: project({}) vs crutch({})'\
-          .format(config_version, this_version)
-      sys.exit(1)
+      self.renv.stop(
+          Runtime.EVER,
+          'Major versions are not compatible: project({}) vs crutch({})'\
+          .format(config_version, this_version))
 
     # Minor version of the project cannot be bigger than CRUTCH's
     if config_version_parts[1] > this_version_parts[1]:
-      print 'Minor versions are not compatible: project({}) vs crutch({})'\
-          .format(config_version, this_version)
-      sys.exit(1)
+      self.renv.stop(
+          Runtime.EVER,
+          'Minor versions are not compatible: project({}) vs crutch({})'\
+          .format(config_version, this_version))
 
   def create_runtime_environment(self):
-    renv = RuntimeEnvironment(self.runners)
-    menu = create_crutch_menu(renv)
-    renv.menu = menu
-    prompt = Prompt(renv)
-    renv.prompt = prompt
+    self.renv = Runtime.RuntimeEnvironment(self.runners)
+    self.renv.menu = create_crutch_menu(self.renv)
+    self.renv.prompt = Prompt(self.renv)
+    return self.renv
 
-    defaults = renv.get_default_properties()
+  def set_default_props(self, project_directory=None):
+    defaults = self.renv.get_default_properties()
     defaults['crutch_python'] = sys.executable
     defaults['crutch_version'] = self.get_version()
 
-    renv.mirror_props_to_config(defaults.keys())
+    self.renv.mirror_props_to_config(defaults.keys())
 
     defaults['sys_login'] = os.getlogin()
 
-    return renv
+    project_directory = project_directory or self.renv.get_project_directory()
+    self.renv.set_prop('project_directory', project_directory)
+    self.renv.set_prop('crutch_directory', os.path.join(project_directory, '.crutch'))
+    self.renv.set_prop('crutch_config', os.path.join(project_directory, '.crutch.json'))
 
-  def handle_new(self, renv):
-    opts = renv.menu.parse(renv.get_prop('crutch_argv'))
-    renv.update_cli_properties(opts)
+  def handle_no_args(self):
+    self.set_default_props(os.path.abspath('.'))
+    self.check_crutch_config()
+    self.renv.config_load()
+    self.check_version()
 
-    project_directory = renv.get_project_directory()
-    crutch_directory = os.path.join(project_directory, '.crutch')
-    crutch_config = os.path.join(project_directory, '.crutch.json')
-    renv.set_prop('project_directory', project_directory)
-    renv.set_prop('crutch_directory', crutch_directory)
-    renv.set_prop('crutch_config', crutch_config)
-
-    if os.path.exists(crutch_directory):
-      print "You cannot invoke `new` on already existing CRUTCH directory"
-      sys.exit(1)
-
-    os.makedirs(crutch_directory)
-
-    renv.update_config_filename(crutch_config)
-
-    runner = self.runners.get('new')(renv)
+    runner = self.runners.get(self.renv.get_project_type())(self.renv)
     runner.activate_features()
+
+    self.renv.menu.parse([runner.default_run_feature])
 
     return runner
 
-  def handle_no_args(self, renv):
-    # Before we parse anything we need to load current config
-    project_directory = os.path.abspath('.')
-    crutch_directory = os.path.join(project_directory, '.crutch')
-    crutch_config = os.path.join(project_directory, '.crutch.json')
-    renv.set_prop('project_directory', project_directory)
-    renv.set_prop('crutch_directory', crutch_directory)
-    renv.set_prop('crutch_config', crutch_config)
-
-    if not os.path.exists(crutch_config):
-      print "You cannot invoke default CRUTCH action on non-initialized directory"
-      sys.exit(1)
-
-    # Current config gives us project type, and this type gives us default
-    # feature and action to run
-    renv.update_config_filename(crutch_config)
-    renv.config_load()
-
-    self.check_version(renv)
-
-    runner = self.runners.get(renv.get_prop('project_type'))(renv)
+  def handle_new(self):
+    runner = self.runners.get('new')(self.renv)
     runner.activate_features()
 
-    opts = renv.menu.parse([runner.default_run_feature])
-    renv.update_cli_properties(opts)
+    self.renv.menu.parse(self.renv.get_prop('crutch_argv'))
+    self.set_default_props()
 
     return runner
 
-  def handle_normal(self, renv):
-    # Before we parse anything we need to load current config
-    project_directory = os.path.abspath('.')
-    crutch_directory = os.path.join(project_directory, '.crutch')
-    crutch_config = os.path.join(project_directory, '.crutch.json')
-    renv.set_prop('project_directory', project_directory)
-    renv.set_prop('crutch_directory', crutch_directory)
-    renv.set_prop('crutch_config', crutch_config)
+  def handle_normal(self):
+    # FIND a way to get the directory from the argv before parsing
+    # Maybe -d --directory should be top level e.g. crutch -d ~/blah build
+    self.set_default_props(os.path.abspath('.'))
+    self.check_crutch_config()
+    self.renv.config_load()
+    self.check_version()
 
-    if not os.path.exists(crutch_config):
-      print "You cannot invoke CRUTCH action on non-initialized directory"
-      sys.exit(1)
-
-    # Current config gives us project type, and this type gives us default
-    # feature and action to run
-    renv.update_config_filename(crutch_config)
-    renv.config_load()
-
-    self.check_version(renv)
-
-    runner = self.runners.get(renv.get_prop('project_type'))(renv)
+    runner = self.runners.get(self.renv.get_project_type())(self.renv)
     runner.activate_features()
 
-    opts = renv.menu.parse(renv.get_prop('crutch_argv'))
-    renv.update_cli_properties(opts)
+    self.renv.menu.parse(self.renv.get_prop('crutch_argv'))
 
     return runner
 
-  def handle_prompt(self, renv):
-    project_directory = os.path.abspath('.')
-    crutch_directory = os.path.join(project_directory, '.crutch')
-    crutch_config = os.path.join(project_directory, '.crutch.json')
-    renv.set_prop('project_directory', project_directory)
-    renv.set_prop('crutch_directory', crutch_directory)
-    renv.set_prop('crutch_config', crutch_config)
-    renv.update_config_filename(crutch_config)
+  def handle_prompt(self):
+    self.set_default_props(os.path.abspath('.'))
+
     runner = None
 
     while True:
 
       try:
-        argv = renv.prompt.activate()
+        argv = self.renv.prompt.activate()
 
         if not argv:
-          pass
+          continue
+
         elif argv[0] == 'new':
-          if os.path.exists(crutch_directory):
-            print "You cannot invoke `new` on already existing CRUTCH directory"
-            continue
+          self.runners.get('new')(self.renv).activate_features()
+          self.renv.menu.parse(argv)
+          self.set_default_props()
 
-          os.makedirs(crutch_directory)
+          runner = self.renv.feature_ctrl.get_active_feature('new').create()
 
-          self.runners.get('new')(renv).activate_features()
-
-          opts = renv.menu.parse(argv)
-          renv.update_cli_properties(opts)
-
-          runner = renv.feature_ctrl.get_active_feature('new').create()
-          renv.config_flush()
         else:
-          if not os.path.exists(crutch_config):
-            print "You cannot invoke CRUTCH action on non-initialized directory"
-            continue
+          self.check_crutch_config()
 
           if not runner:
-            renv.config_load()
+            self.renv.config_load()
+            self.check_version()
+            self.set_default_props()
 
-            self.check_version(renv)
-
-            runner = self.runners.get(renv.get_prop('project_type'))(renv)
+            runner = self.runners.get(self.renv.get_project_type())(self.renv)
             runner.activate_features()
 
-          opts = renv.menu.parse(argv)
-          renv.update_cli_properties(opts)
+          self.renv.menu.parse(argv)
           runner.run()
-          renv.config_flush()
-      except KeyboardInterrupt:
-        pass
-      except EOFError:
-        pass
 
-    print('Bye!')
-    sys.exit(0)
+        self.renv.config_flush()
+      except KeyboardInterrupt:
+        break
+      except EOFError:
+        break
+
+    self.renv.stop(Runtime.EOK, 'Bye!')
 
 
   def run(self):
     # Before we start parsing the cli options we need a fully initialized
     # runtime environment
     renv = self.create_runtime_environment()
-    renv.lifecycle.enable_tracing()
-    renv.lifecycle.mark(Lifecycle.CRUTCH_START)
+    renv.start(enable_tracing=True)
 
     argv = self.argv[1:]
     renv.set_prop('crutch_argv', argv)
 
     runner = None
     if not argv:
-      runner = self.handle_no_args(renv)
+      runner = self.handle_no_args()
     elif argv[0] == '-p' or argv[0] == '--prompt':
-      self.handle_prompt(renv)
-      renv.lifecycle.mark(Lifecycle.CRUTCH_STOP)
-      sys.exit(0)
+      self.handle_prompt()
     elif argv[0] == 'new':
-      runner = self.handle_new(renv)
+      runner = self.handle_new()
     else:
-      runner = self.handle_normal(renv)
+      runner = self.handle_normal()
 
     runner.run()
 
@@ -245,7 +196,4 @@ class Driver(object):
     # print renv.props.get_print_info()
     # print renv.repl.get_print_info()
 
-    renv.config_flush()
-
-    renv.lifecycle.mark(Lifecycle.CRUTCH_STOP)
-    sys.exit(0)
+    renv.stop()

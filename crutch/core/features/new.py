@@ -24,6 +24,8 @@ import os
 
 from crutch.core.features.basics import Feature, FeatureMenu
 
+import crutch.core.runtime as Runtime
+
 NAME = 'new'
 
 class FeatureMenuNew(FeatureMenu):
@@ -55,8 +57,15 @@ class FeatureNew(Feature):
   def create(self):
     renv = self.renv
 
+    crutch_directory = renv.get_crutch_directory()
     project_directory = renv.get_project_directory()
     project_type = renv.get_project_type()
+
+    if os.path.exists(crutch_directory):
+      renv.stop(Runtime.EPERM, 'You cannot invoke `new` on already existing CRUTCH directory')
+
+    # Create .crutch directory
+    os.makedirs(crutch_directory)
 
     # Mirror some project properties to config
     renv.set_prop(
@@ -79,11 +88,12 @@ class FeatureNew(Feature):
     runner = renv.runners.get(project_type)(renv)
     all_ftrs, user_ftrs = runner.activate_features()
 
+    # Save user features to config
     renv.set_prop('project_features', user_ftrs, mirror_to_config=True)
 
-    folders = ['main'] + [os.path.join('features', f) for f in all_ftrs]
-
     psub = {'ProjectNameRepl': renv.get_project_name()}
+
+    folders = ['main'] + [os.path.join('features', f) for f in all_ftrs]
 
     for folder in folders:
       self.jinja_ftr.copy_folder(

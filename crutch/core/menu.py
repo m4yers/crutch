@@ -75,8 +75,7 @@ class Menu(object):
     # Normalize project_directory
     opts = vars(self.parser.parse_args(argv))
     opts['project_directory'] = os.path.abspath(opts['project_directory'])
-
-    return opts
+    self.renv.update_cli_properties(opts)
 
 
 class MenuActions(object):
