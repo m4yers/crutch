@@ -27,6 +27,8 @@ import io
 from crutch.core.menu import create_crutch_menu
 from crutch.core.runtime import RuntimeEnvironment
 
+from crutch.core.repl.prompt import Prompt
+
 import crutch.core.lifecycle as Lifecycle
 
 class Driver(object):
@@ -64,6 +66,8 @@ class Driver(object):
     renv = RuntimeEnvironment(self.runners)
     menu = create_crutch_menu(renv)
     renv.menu = menu
+    prompt = Prompt(renv)
+    renv.prompt = prompt
 
     defaults = renv.get_default_properties()
     defaults['crutch_python'] = sys.executable
@@ -137,7 +141,7 @@ class Driver(object):
     renv.set_prop('crutch_config', crutch_config)
 
     if not os.path.exists(crutch_config):
-      print "You cannot invoke default CRUTCH action on non-initialized directory"
+      print "You cannot invoke CRUTCH action on non-initialized directory"
       sys.exit(1)
 
     # Current config gives us project type, and this type gives us default
@@ -155,6 +159,62 @@ class Driver(object):
 
     return runner
 
+  def handle_prompt(self, renv):
+    project_directory = os.path.abspath('.')
+    crutch_directory = os.path.join(project_directory, '.crutch')
+    crutch_config = os.path.join(project_directory, '.crutch.json')
+    renv.set_prop('project_directory', project_directory)
+    renv.set_prop('crutch_directory', crutch_directory)
+    renv.set_prop('crutch_config', crutch_config)
+    renv.update_config_filename(crutch_config)
+    runner = None
+
+    while True:
+
+      try:
+        argv = renv.prompt.activate()
+
+        if not argv:
+          pass
+        elif argv[0] == 'new':
+          if os.path.exists(crutch_directory):
+            print "You cannot invoke `new` on already existing CRUTCH directory"
+            continue
+
+          os.makedirs(crutch_directory)
+
+          opts = renv.menu.parse(argv)
+          renv.update_cli_properties(opts)
+
+          self.runners.get('new')(renv).activate_features()
+
+          runner = renv.feature_ctrl.get_active_feature('new').handle()
+          renv.config_flush()
+        else:
+          if not os.path.exists(crutch_config):
+            print "You cannot invoke CRUTCH action on non-initialized directory"
+            continue
+
+          if not runner:
+            renv.config_load()
+
+            self.check_version(renv)
+
+            runner = self.runners.get(renv.get_prop('project_type'))(renv)
+            runner.activate_features()
+
+          opts = renv.menu.parse(argv)
+          renv.update_cli_properties(opts)
+          runner.run()
+          renv.config_flush()
+      except KeyboardInterrupt:
+        pass
+      except EOFError:
+        pass
+
+      print('Bye!')
+      sys.exit(0)
+
 
   def run(self):
     # Before we start parsing the cli options we need a fully initialized
@@ -169,6 +229,10 @@ class Driver(object):
     runner = None
     if not argv:
       runner = self.handle_no_args(renv)
+    elif argv[0] == '-p' or argv[0] == '--prompt':
+      self.handle_prompt(renv)
+      renv.lifecycle.mark(Lifecycle.CRUTCH_STOP)
+      sys.exit(0)
     elif argv[0] == 'new':
       runner = self.handle_new(renv)
     else:

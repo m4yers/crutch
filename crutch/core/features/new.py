@@ -55,7 +55,8 @@ class FeatureNew(Feature):
     # explicitly and activate its features `manually`. This activation will
     # usually lead to creation of new feature specific replacements used by
     # jinja template render
-    all_ftrs, user_ftrs = renv.runners.get(project_type)(renv).activate_features()
+    runner = renv.runners.get(project_type)(renv)
+    all_ftrs, user_ftrs = runner.activate_features()
 
     renv.set_prop('project_features', user_ftrs, mirror_to_config=True)
 
@@ -68,3 +69,5 @@ class FeatureNew(Feature):
           os.path.join(project_type, folder),
           project_directory,
           psub)
+
+    return runner

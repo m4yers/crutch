@@ -40,6 +40,9 @@ class Menu(object):
     self.subparsers = self.parser.add_subparsers(title='Features', dest='run_feature')
     self.features = dict()
 
+  def add_argument(self, *args, **kwargs):
+    self.parser.add_argument(*args, **kwargs)
+
   def add_feature(self, name, desc):
     feature = MenuFeature(name, self.subparsers.add_parser(name, help=desc))
     self.features[name] = feature
@@ -129,6 +132,8 @@ def create_crutch_menu(renv):
   on config data
   """
   menu = Menu(renv, prog='CRUTCH', description='Get a project running fast')
+
+  menu.add_argument('-p', '--prompt')
 
   new = menu.add_feature('new', 'Create a project')
 

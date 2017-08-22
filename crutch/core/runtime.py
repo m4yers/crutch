@@ -51,6 +51,7 @@ class RuntimeEnvironment(object):
 
   def __init__(self, runners):
     self.menu = None
+    self.prompt = None
     self.runners = runners
     self.props = Properties()
     self.repl = Replacements()
