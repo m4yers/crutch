@@ -28,6 +28,7 @@ import os
 import io
 
 import crutch.core.runtime as Runtime
+import crutch.core.lifecycle as Lifecycle
 
 from crutch.core.menu import create_crutch_menu
 from crutch.core.repl.prompt import Prompt
@@ -38,6 +39,7 @@ class Driver(object):
     self.runners = runners
     self.argv = argv or sys.argv
     self.renv = None
+    self.version = None
 
   def check_crutch_config(self):
     if not os.path.exists(self.renv.get_prop('crutch_config')):
@@ -46,9 +48,11 @@ class Driver(object):
           'You cannot invoke default CRUTCH action on non-initialized directory')
 
   def get_version(self):
-    version = os.path.join(os.path.dirname(__file__), '..', '..', 'VERSION')
-    with io.open(version) as out:
-      return out.read().strip()
+    if not self.version:
+      version_file = os.path.join(os.path.dirname(__file__), '..', '..', 'VERSION')
+      with io.open(version_file) as out:
+        self.version = out.read().strip()
+    return self.version
 
   def check_version(self):
     config_version = self.renv.props.config.get('crutch_version')
@@ -132,6 +136,9 @@ class Driver(object):
 
     runner = None
 
+    print("CRUTCH {}".format(self.get_version()))
+    print("Home: https://github.com/m4yers/crutch")
+
     while True:
 
       try:
@@ -141,6 +148,11 @@ class Driver(object):
           continue
 
         elif argv[0] == 'new':
+          if os.path.exists(self.renv.get_crutch_directory()):
+            self.renv.stop(
+                Runtime.EPERM,
+                'You cannot invoke `new` on already existing CRUTCH directory')
+
           self.runners.get('new')(self.renv).activate_features()
           self.renv.menu.parse(argv)
           self.set_default_props()
@@ -162,38 +174,44 @@ class Driver(object):
           runner.run()
 
         self.renv.config_flush()
+      except Runtime.StopError:
+        continue
       except KeyboardInterrupt:
         break
       except EOFError:
         break
 
-    self.renv.stop(Runtime.EOK, 'Bye!')
-
+    self.renv.stop(Runtime.EOK)
 
   def run(self):
-    # Before we start parsing the cli options we need a fully initialized
-    # runtime environment
-    renv = self.create_runtime_environment()
-    renv.start(enable_tracing=True)
+    code = Runtime.EOK
 
-    argv = self.argv[1:]
-    renv.set_prop('crutch_argv', argv)
+    try:
+      renv = self.create_runtime_environment()
+      # renv.lifecycle.enable_tracing()
+      renv.lifecycle.mark(Lifecycle.CRUTCH_START)
 
-    runner = None
-    if not argv:
-      runner = self.handle_no_args()
-    elif argv[0] == '-p' or argv[0] == '--prompt':
-      self.handle_prompt()
-    elif argv[0] == 'new':
-      runner = self.handle_new()
-    else:
-      runner = self.handle_normal()
+      argv = self.argv[1:]
+      renv.set_prop('crutch_argv', argv)
 
-    runner.run()
+      runner = None
+      if not argv:
+        runner = self.handle_no_args()
+      elif argv[0] == '-p' or argv[0] == '--prompt':
+        self.handle_prompt()
+      elif argv[0] == 'new':
+        runner = self.handle_new()
+      else:
+        runner = self.handle_normal()
 
-    runner.deactivate_features()
+      runner.run()
+    except Runtime.StopError as error:
+      code = error.code
+
+    renv.feature_ctrl.deactivate()
 
     # print renv.props.get_print_info()
     # print renv.repl.get_print_info()
 
-    renv.stop()
+    renv.lifecycle.mark(Lifecycle.CRUTCH_STOP)
+    sys.exit(code)

@@ -23,8 +23,6 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
-import sys
-
 from crutch.core.properties import Properties
 from crutch.core.replacements import Replacements, GenerativeReplacementsProvider
 from crutch.core.features.ctrl import FeatureCtrl
@@ -35,6 +33,11 @@ EOK = 0
 EPERM = 1 # Operation not permitted
 ECFG = 2 # Operation not permitted
 EVER = 3  # Version error
+
+class StopError(Exception):
+  def __init__(self, code):
+    super(StopError, self).__init__()
+    self.code = code
 
 
 class RuntimeEnvReplProvider(GenerativeReplacementsProvider):
@@ -149,11 +152,6 @@ class RuntimeEnvironment(object):
     for prop in properties:
       self.prop_to_repl_mirror[prop] = self.props[prop]
 
-  def start(self, enable_tracing=False):
-    if enable_tracing:
-      self.lifecycle.enable_tracing()
-    self.lifecycle.mark(Lifecycle.CRUTCH_START)
-
   def stop(self, code=EOK, message=None):
     if code == EOK:
       self.config_flush()
@@ -161,5 +159,4 @@ class RuntimeEnvironment(object):
     if message:
       print(message)
 
-    self.lifecycle.mark(Lifecycle.CRUTCH_STOP)
-    sys.exit(code)
+    raise StopError(code)

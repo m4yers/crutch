@@ -24,29 +24,65 @@ from __future__ import unicode_literals
 
 import shlex
 
-from prompt_toolkit import prompt
-from prompt_toolkit.history import InMemoryHistory
-from prompt_toolkit.contrib.completers import WordCompleter
-from pygments.style import Style
 from pygments.token import Token
-from pygments.styles.default import DefaultStyle
 
-class DocumentStyle(Style):
-  styles = {
-      Token.Menu.Completions.Completion.Current: 'bg:#00aaaa #000000',
-      Token.Menu.Completions.Completion: 'bg:#008888 #ffffff',
-      Token.Menu.Completions.ProgressButton: 'bg:#003333',
-      Token.Menu.Completions.ProgressBar: 'bg:#00aaaa',
-  }
-  styles.update(DefaultStyle.styles)
+from prompt_toolkit import AbortAction, Application, CommandLineInterface
+from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.shortcuts import create_prompt_layout, create_eventloop
+from prompt_toolkit.filters import Always
+from prompt_toolkit.buffer import Buffer, AcceptAction
+
+from crutch.core.repl.lexer import CommandLexer
+from crutch.core.repl.toolbar import create_toolbar_handler
+from crutch.core.repl.keys import get_key_manager
+from crutch.core.repl.style import style_factory
 
 class Prompt(object):
 
   def __init__(self, renv):
     self.renv = renv
+    self.is_long = True
+
+    history = InMemoryHistory()
+    toolbar_handler = create_toolbar_handler(self.get_long_options)
+
+    layout = create_prompt_layout(
+        get_prompt_tokens=self.get_prompt_tokens,
+        lexer=CommandLexer,
+        get_bottom_toolbar_tokens=toolbar_handler)
+
+    buf = Buffer(
+        history=history,
+        # completer=self.completer,
+        complete_while_typing=Always(),
+        accept_action=AcceptAction.RETURN_DOCUMENT)
+
+    manager = get_key_manager(
+        self.set_long_options,
+        self.get_long_options)
+
+    application = Application(
+        style=style_factory('default'),
+        layout=layout,
+        buffer=buf,
+        key_bindings_registry=manager.registry,
+        on_exit=AbortAction.RAISE_EXCEPTION,
+        on_abort=AbortAction.RETRY,
+        ignore_case=True)
+
+    eventloop = create_eventloop()
+
+    self.cli = CommandLineInterface(application=application, eventloop=eventloop)
+
+  def get_prompt_tokens(self, _):
+    return [(Token.Pound, ' Y '), (Token.Text, ' ')]
+
+  def set_long_options(self, value):
+    self.is_long = value
+
+  def get_long_options(self):
+    return self.is_long
 
   def activate(self):
-    completer = WordCompleter(['build', 'test', 'feature', 'new'])
-    history = InMemoryHistory()
-    line = prompt('> ', completer=completer, style=DocumentStyle, history=history)
-    return shlex.split(line)
+    document = self.cli.run(True)
+    return shlex.split(document.text)

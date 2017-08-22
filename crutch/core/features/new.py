@@ -24,8 +24,6 @@ import os
 
 from crutch.core.features.basics import Feature, FeatureMenu
 
-import crutch.core.runtime as Runtime
-
 NAME = 'new'
 
 class FeatureMenuNew(FeatureMenu):
@@ -60,9 +58,6 @@ class FeatureNew(Feature):
     crutch_directory = renv.get_crutch_directory()
     project_directory = renv.get_project_directory()
     project_type = renv.get_project_type()
-
-    if os.path.exists(crutch_directory):
-      renv.stop(Runtime.EPERM, 'You cannot invoke `new` on already existing CRUTCH directory')
 
     # Create .crutch directory
     os.makedirs(crutch_directory)
@@ -100,5 +95,7 @@ class FeatureNew(Feature):
           os.path.join(project_type, folder),
           project_directory,
           psub)
+
+    print("Done!")
 
     return runner
