@@ -135,20 +135,6 @@ def create_crutch_menu(renv):
 
   menu.add_argument('-p', '--prompt')
 
-  new = menu.add_feature('new', 'Create a project')
-
-  new.add_argument(
-      dest='project_type', metavar='TYPE',
-      choices=['cpp', 'python'], help='Project type')
-
-  new.add_argument(
-      '-n', '--name', metavar='NAME', dest='project_name',
-      help='Project name(default=basename(FOLDER))')
-
-  new.add_argument(
-      '-f', '--features', metavar='FEATURE', nargs='*', default='default',
-      dest='project_features', help='Select project features')
-
   return menu
 
 def get_default_crutch_opts():

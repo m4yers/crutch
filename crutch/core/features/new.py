@@ -22,16 +22,37 @@
 
 import os
 
-from crutch.core.features.basics import Feature
+from crutch.core.features.basics import Feature, FeatureMenu
+
+NAME = 'new'
+
+class FeatureMenuNew(FeatureMenu):
+
+  def __init__(self, renv, handler_default=None):
+    super(FeatureMenuNew, self).__init__(renv, NAME, 'Creates new project')
+
+    default = self.add_default_action('View all the features', handler_default)
+
+    default.add_argument(
+        dest='project_type', metavar='TYPE',
+        choices=['cpp', 'python'], help='Project type')
+
+    default.add_argument(
+        '-n', '--name', metavar='NAME', dest='project_name',
+        help='Project name(default=basename(FOLDER))')
+
+    default.add_argument(
+        '-f', '--features', metavar='FEATURE', nargs='*', default='default',
+        dest='project_features', help='Select project features')
 
 
 class FeatureNew(Feature):
 
   def __init__(self, renv):
     self.jinja_ftr = renv.feature_ctrl.get_active_feature('jinja')
-    super(FeatureNew, self).__init__(renv)
+    super(FeatureNew, self).__init__(renv, FeatureMenuNew(renv, self.create))
 
-  def handle(self):
+  def create(self):
     renv = self.renv
 
     project_directory = renv.get_project_directory()

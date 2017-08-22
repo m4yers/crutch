@@ -140,9 +140,9 @@ class FeatureCtrl(object):
           features.append(name)
           result[cat_name] = features
 
-        # Always instantiated default CRUTCH category defaults
-        crutch_category = self.categories['crutch']
-        result['crutch'] = crutch_category.defaults
+    # Always instantiated default CRUTCH category defaults
+    crutch_category = self.categories['crutch']
+    result['crutch'] = crutch_category.defaults
 
     return result
 

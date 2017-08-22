@@ -183,12 +183,12 @@ class Driver(object):
 
           os.makedirs(crutch_directory)
 
+          self.runners.get('new')(renv).activate_features()
+
           opts = renv.menu.parse(argv)
           renv.update_cli_properties(opts)
 
-          self.runners.get('new')(renv).activate_features()
-
-          runner = renv.feature_ctrl.get_active_feature('new').handle()
+          runner = renv.feature_ctrl.get_active_feature('new').create()
           renv.config_flush()
         else:
           if not os.path.exists(crutch_config):
@@ -212,15 +212,15 @@ class Driver(object):
       except EOFError:
         pass
 
-      print('Bye!')
-      sys.exit(0)
+    print('Bye!')
+    sys.exit(0)
 
 
   def run(self):
     # Before we start parsing the cli options we need a fully initialized
     # runtime environment
     renv = self.create_runtime_environment()
-    # renv.lifecycle.enable_tracing()
+    renv.lifecycle.enable_tracing()
     renv.lifecycle.mark(Lifecycle.CRUTCH_START)
 
     argv = self.argv[1:]
