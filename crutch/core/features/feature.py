@@ -20,8 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
-
+from crutch.core.exceptions import StopException
 from crutch.core.features.basics import Feature, FeatureMenu
 
 
@@ -131,8 +130,7 @@ class FeatureFeature(Feature):
     name = renv.get_prop(OPT_FEATURE)
     status = self.get_status(name)
     if status.active:
-      print "Feature '{}' already enabled".format(name)
-      sys.exit(1)
+      raise StopException(StopException.EFTR, "Feature '{}' already enabled".format(name))
     else:
       _, requested_ftrs = ctrl.activate_features([name])
       user_ftrs = list(set(renv.get_project_features()) | set(requested_ftrs))
@@ -154,8 +152,10 @@ class FeatureFeature(Feature):
         project_features.remove(ftr_name)
         renv.set_prop('project_features', project_features, mirror_to_config=True)
       else:
-        print "You cannot disable a feature that is a dependency of another"
-        sys.exit(1)
+        raise StopException(
+            StopException.EFTR,
+            "You cannot disable a feature that is a dependency of another")
     else:
-      print "Feature '{}' is not enabled".format(name)
-      sys.exit(1)
+      raise StopException(
+          StopException.EFTR,
+          "Feature '{}' is not enabled".format(name))

@@ -27,9 +27,10 @@ import sys
 import os
 import io
 
-import crutch.core.runtime as Runtime
 import crutch.core.lifecycle as Lifecycle
 
+from crutch.core.exceptions import StopException
+from crutch.core.runtime import RuntimeEnvironment
 from crutch.core.menu import create_crutch_menu
 from crutch.core.repl.prompt import Prompt
 
@@ -43,8 +44,8 @@ class Driver(object):
 
   def check_crutch_config(self):
     if not os.path.exists(self.renv.get_prop('crutch_config')):
-      self.renv.stop(
-          Runtime.EPERM,
+      raise StopException(
+          StopException.EPERM,
           'You cannot invoke default CRUTCH action on non-initialized directory')
 
   def get_version(self):
@@ -62,20 +63,20 @@ class Driver(object):
 
     # Major version mismatch is a no go
     if config_version_parts[0] != this_version_parts[0]:
-      self.renv.stop(
-          Runtime.EVER,
+      raise StopException(
+          StopException.EVER,
           'Major versions are not compatible: project({}) vs crutch({})'\
           .format(config_version, this_version))
 
     # Minor version of the project cannot be bigger than CRUTCH's
     if config_version_parts[1] > this_version_parts[1]:
-      self.renv.stop(
-          Runtime.EVER,
+      raise StopException(
+          StopException.EVER,
           'Minor versions are not compatible: project({}) vs crutch({})'\
           .format(config_version, this_version))
 
   def create_runtime_environment(self):
-    self.renv = Runtime.RuntimeEnvironment(self.runners)
+    self.renv = RuntimeEnvironment(self.runners)
     self.renv.menu = create_crutch_menu(self.renv)
     self.renv.prompt = Prompt(self.renv)
     return self.renv
@@ -149,8 +150,8 @@ class Driver(object):
 
         elif argv[0] == 'new':
           if os.path.exists(self.renv.get_crutch_directory()):
-            self.renv.stop(
-                Runtime.EPERM,
+            raise StopException(
+                StopException.EPERM,
                 'You cannot invoke `new` on already existing CRUTCH directory')
 
           self.runners.get('new')(self.renv).activate_features()
@@ -174,17 +175,21 @@ class Driver(object):
           runner.run()
 
         self.renv.config_flush()
-      except Runtime.StopError:
+      except StopException as stop:
+        if stop.should_exit:
+          raise
+        print(stop.message)
         continue
       except KeyboardInterrupt:
         break
       except EOFError:
         break
 
-    self.renv.stop(Runtime.EOK)
+    raise StopException()
 
   def run(self):
-    code = Runtime.EOK
+    code = StopException.EOK
+    message = None
 
     try:
       renv = self.create_runtime_environment()
@@ -195,6 +200,7 @@ class Driver(object):
       renv.set_prop('crutch_argv', argv)
 
       runner = None
+
       if not argv:
         runner = self.handle_no_args()
       elif argv[0] == '-p' or argv[0] == '--prompt':
@@ -205,8 +211,10 @@ class Driver(object):
         runner = self.handle_normal()
 
       runner.run()
-    except Runtime.StopError as error:
-      code = error.code
+
+    except StopException as stop:
+      code = stop.code
+      message = stop.message
 
     renv.feature_ctrl.deactivate()
 
@@ -214,4 +222,8 @@ class Driver(object):
     # print renv.repl.get_print_info()
 
     renv.lifecycle.mark(Lifecycle.CRUTCH_STOP)
+
+    if message:
+      print(message)
+
     sys.exit(code)

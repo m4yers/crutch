@@ -20,13 +20,13 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
 import os
 
 import networkx as nx
 
 import crutch.core.lifecycle as Lifecycle
 
+from crutch.core.exceptions import StopException
 from crutch.core.features.basics import FeatureCategory
 from crutch.core.replacements import GenerativeReplacementsProvider
 
@@ -203,9 +203,9 @@ class FeatureCtrl(object):
 
     # If not DAG we cannot build graph's topology
     if not nx.is_directed_acyclic_graph(graph):
-      print 'Features you have provided form a circular dependency:'
-      print list(nx.find_cycle(graph, orientation='ignore'))
-      sys.exit(1)
+      raise Exception(
+          'Features you have provided form a circular dependency:\n' +
+          list(nx.find_cycle(graph, orientation='ignore')))
 
     cat_order = list(nx.topological_sort(graph))
 
@@ -241,10 +241,11 @@ class FeatureCtrl(object):
         if cat_desc.singular and cat_inst.get_active_features():
           # If the category or one of its features were requested explicityly we need to nofity user
           if cat_name in features or set(cat_active_features) & set(features):
-            print str(
-                "Cannot activate feature '{}', since its category '{}' supports only " +
-                "one active feature at a time").format(cat_active_features[0], cat_name)
-            sys.exit(1)
+            raise StopException(
+                StopException.EFTR,
+                str(
+                    "Cannot activate feature '{}', since its category '{}' supports only " +
+                    "one active feature at a time").format(cat_active_features[0], cat_name))
           # otherwise we can just continue
           else:
             continue

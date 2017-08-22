@@ -22,8 +22,9 @@
 
 import subprocess
 import shutil
-import sys
 import os
+
+from crutch.core.exceptions import StopException
 
 from crutch.core.features.basics import create_simple_feature_category
 from crutch.core.features.basics import Feature, FeatureMenu
@@ -155,11 +156,9 @@ class FeatureCppTest(Feature):
 
     for tst in self.get_tests():
       if test.name == tst.name:
-        print "'{}' already exists".format(test.name)
-        sys.exit(1)
+        raise StopException(StopException.EFS, "'{}' already exists".format(test.name))
       if test.name in tst.name:
-        print "'{}' is a group of tests".format(test.name)
-        sys.exit(1)
+        raise StopException(StopException.EFS, "'{}' is a group of tests".format(test.name))
 
     renv.set_prop(OPT_TEST, test.target, mirror_to_repl=True)
 
@@ -190,8 +189,7 @@ class FeatureCppTest(Feature):
     test = Test(renv.get_prop(OPT_TEST))
 
     if test not in self.get_tests():
-      print "'{}' does not exist".format(test.name)
-      sys.exit(1)
+      raise StopException(StopException.EFS, "'{}' does not exist".format(test.name))
 
     # Remove test folder
     shutil.rmtree(os.path.join(self.get_test_src_dir(), os.path.sep.join(test.path)))

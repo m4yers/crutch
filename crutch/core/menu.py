@@ -26,11 +26,11 @@ menu in CRUTCH related terms and not just parsers and subparsers
 """
 
 import argparse
-import sys
 import os
 
 import crutch.core.lifecycle as Lifecycle
 
+from crutch.core.exceptions import StopException
 
 class Menu(object):
 
@@ -56,8 +56,7 @@ class Menu(object):
     self.renv.lifecycle.mark(Lifecycle.CMD_PARSE, Lifecycle.ORDER_BEFORE, argv)
     feature = argv[0]
     if feature not in self.features:
-      print "Feature '{}' is not enabled".format(feature)
-      sys.exit(1)
+      raise StopException(StopException.EFTR, "Feature '{}' is not enabled".format(feature))
 
     argv = argv[1:]
     if argv:

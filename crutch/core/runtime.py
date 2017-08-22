@@ -27,17 +27,9 @@ from crutch.core.properties import Properties
 from crutch.core.replacements import Replacements, GenerativeReplacementsProvider
 from crutch.core.features.ctrl import FeatureCtrl
 
+from crutch.core.exceptions import StopException
+
 import crutch.core.lifecycle as Lifecycle
-
-EOK = 0
-EPERM = 1 # Operation not permitted
-ECFG = 2 # Operation not permitted
-EVER = 3  # Version error
-
-class StopError(Exception):
-  def __init__(self, code):
-    super(StopError, self).__init__()
-    self.code = code
 
 
 class RuntimeEnvReplProvider(GenerativeReplacementsProvider):
@@ -124,7 +116,7 @@ class RuntimeEnvironment(object):
     self.lifecycle.mark(Lifecycle.CONFIG_LOAD, Lifecycle.ORDER_BEFORE)
     crutch_config = self.get_crutch_config()
     if not crutch_config:
-      self.stop(ECFG, 'Crutch config is not set')
+      raise StopException(StopException.ECFG, 'Crutch config is not set')
     self.props.update_config(crutch_config)
     self.props.config_load()
     self.lifecycle.mark(Lifecycle.CONFIG_LOAD, Lifecycle.ORDER_AFTER)
@@ -133,7 +125,7 @@ class RuntimeEnvironment(object):
     self.lifecycle.mark(Lifecycle.CONFIG_FLUSH, Lifecycle.ORDER_BEFORE)
     crutch_config = self.get_crutch_config()
     if not crutch_config:
-      self.stop(ECFG, 'Crutch config is not set')
+      raise StopException(StopException.ECFG, 'Crutch config is not set')
     self.props.update_config(crutch_config)
     self.props.config_flush()
     self.lifecycle.mark(Lifecycle.CONFIG_FLUSH, Lifecycle.ORDER_AFTER)
@@ -151,12 +143,3 @@ class RuntimeEnvironment(object):
 
     for prop in properties:
       self.prop_to_repl_mirror[prop] = self.props[prop]
-
-  def stop(self, code=EOK, message=None):
-    if code == EOK:
-      self.config_flush()
-
-    if message:
-      print(message)
-
-    raise StopError(code)

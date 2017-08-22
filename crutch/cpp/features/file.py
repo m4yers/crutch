@@ -21,8 +21,9 @@
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import shutil
-import sys
 import os
+
+from crutch.core.exceptions import StopException
 
 from crutch.core.features.basics import create_simple_feature_category
 from crutch.core.features.basics import Feature, FeatureMenu
@@ -127,8 +128,7 @@ class FeatureCppFileManager(Feature):
     group = FileGroup(renv.get_prop(OPT_GROUP), project_directory, project_name)
 
     if group.exists():
-      print "File group '{}' already exists".format(group.name)
-      sys.exit(1)
+      raise StopException(StopException.EFS, "File group '{}' already exists".format(group.name))
 
     jdir = os.path.join(renv.get_project_type(), 'other', NAME)
     psub = {'FileGroupRepl': os.path.join(project_name, *group.path)}
@@ -146,7 +146,6 @@ class FeatureCppFileManager(Feature):
     group = FileGroup(renv.get_prop(OPT_GROUP), project_directory, project_name)
 
     if not group.exists():
-      print "File group '{}' does not exist".format(group.name)
-      sys.exit(1)
+      raise StopException(StopException.EFS, "File group '{}' does not exist".format(group.name))
 
     group.delete()
