@@ -32,16 +32,43 @@ import crutch.core.lifecycle as Lifecycle
 
 from crutch.core.exceptions import StopException
 
+
+class MenuArgument(object):
+
+  TYPE_POSITIONAL = 0
+  TYPE_OPTIONAL = 1
+
+  def __init__(self, *names, **kwargs):
+    self.type, self.names = self.parse_names(names)
+    self.choices = kwargs.get('choices', None)
+    self.help = kwargs.get('help', None)
+    self.metavar = kwargs.get('metavar', None)
+
+  def parse_names(self, names):
+    if names and names[0][0] == '-':
+      return MenuArgument.TYPE_OPTIONAL, names
+
+    return MenuArgument.TYPE_POSITIONAL, names
+
+  def is_positional(self):
+    return self.type == MenuArgument.TYPE_POSITIONAL
+
+  def is_optional(self):
+    return self.type == MenuArgument.TYPE_OPTIONAL
+
+
 class Menu(object):
 
   def __init__(self, renv, *args, **kwargs):
     self.renv = renv
     self.parser = argparse.ArgumentParser(*args, **kwargs)
     self.subparsers = self.parser.add_subparsers(title='Features', dest='run_feature')
+    self.arguments = list()
     self.features = dict()
 
-  def add_argument(self, *args, **kwargs):
-    self.parser.add_argument(*args, **kwargs)
+  def add_argument(self, *names, **kwargs):
+    self.arguments.append(MenuArgument(*names, **kwargs))
+    self.parser.add_argument(*names, **kwargs)
 
   def add_feature(self, name, desc):
     feature = MenuFeature(name, self.subparsers.add_parser(name, help=desc))
@@ -60,7 +87,7 @@ class Menu(object):
 
     argv = argv[1:]
     if argv:
-      actions = self.features[feature].get_actions()
+      actions = self.features[feature].actions
       action = argv[0]
       if not actions or action in actions.get_names():
         argv = [feature] + argv
@@ -98,9 +125,11 @@ class MenuAction(object):
   def __init__(self, name, parser):
     self.parser = parser
     self.name = name
+    self.arguments = list()
 
-  def add_argument(self, *args, **kwargs):
-    self.parser.add_argument(*args, **kwargs)
+  def add_argument(self, *names, **kwargs):
+    self.arguments.append(MenuArgument(*names, **kwargs))
+    self.parser.add_argument(*names, **kwargs)
 
 
 class MenuFeature(MenuAction):
@@ -116,9 +145,6 @@ class MenuFeature(MenuAction):
     self.actions = MenuActions(
         self.name,
         self.parser.add_subparsers(title='Action', dest='action'))
-    return self.actions
-
-  def get_actions(self):
     return self.actions
 
 

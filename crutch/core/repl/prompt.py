@@ -32,28 +32,31 @@ from prompt_toolkit.shortcuts import create_prompt_layout, create_eventloop
 from prompt_toolkit.filters import Always
 from prompt_toolkit.buffer import Buffer, AcceptAction
 
-from crutch.core.repl.lexer import CommandLexer
+from crutch.core.repl.lexer import create_lexer
 from crutch.core.repl.toolbar import create_toolbar_handler
 from crutch.core.repl.keys import get_key_manager
 from crutch.core.repl.style import style_factory
+from crutch.core.repl.completer import CrutchCompleter
 
 class Prompt(object):
 
   def __init__(self, renv):
     self.renv = renv
     self.is_long = True
+    self.cli = None
 
+  def initialize(self):
     history = InMemoryHistory()
     toolbar_handler = create_toolbar_handler(self.get_long_options)
 
     layout = create_prompt_layout(
         get_prompt_tokens=self.get_prompt_tokens,
-        lexer=CommandLexer,
+        lexer=create_lexer(),
         get_bottom_toolbar_tokens=toolbar_handler)
 
     buf = Buffer(
         history=history,
-        # completer=self.completer,
+        # completer=CrutchCompleter(renv),
         complete_while_typing=Always(),
         accept_action=AcceptAction.RETURN_DOCUMENT)
 
@@ -83,6 +86,9 @@ class Prompt(object):
   def get_long_options(self):
     return self.is_long
 
-  def activate(self):
+  def activate(self, reinitialize=False):
+    if reinitialize:
+      self.initialize()
+    assert self.cli
     document = self.cli.run(True)
     return shlex.split(document.text)

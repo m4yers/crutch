@@ -115,6 +115,11 @@ class Driver(object):
     self.renv.menu.parse(self.renv.get_prop('crutch_argv'))
     self.set_default_props()
 
+    if os.path.exists(self.renv.get_crutch_config()):
+      raise StopException(
+          StopException.EPERM,
+          'You cannot invoke `new` on already existing CRUTCH directory')
+
     return runner
 
   def handle_normal(self):
@@ -135,42 +140,50 @@ class Driver(object):
   def handle_prompt(self):
     self.set_default_props(os.path.abspath('.'))
 
+    crutch_config = self.renv.get_prop('crutch_config')
+
     runner = None
+
+    # Since prompt syntax highlight depends on active features we need to read the config first
+    # and activate all the features
+    if os.path.exists(crutch_config):
+      self.renv.config_load()
+      self.check_version()
+      self.set_default_props()
+      runner = self.runners.get(self.renv.get_project_type())(self.renv)
+      runner.activate_features()
+
+    # Otherwise we allow only new to run, and it will update runner upon success
+    else:
+      self.runners.get('new')(self.renv).activate_features()
 
     print("CRUTCH {}".format(self.get_version()))
     print("Home: https://github.com/m4yers/crutch")
 
+    self.renv.prompt.initialize()
+    reinitialize_prompt = False
+
     while True:
 
       try:
-        argv = self.renv.prompt.activate()
+        argv = self.renv.prompt.activate(reinitialize_prompt)
+        reinitialize_prompt = False
 
         if not argv:
           continue
 
         elif argv[0] == 'new':
-          if os.path.exists(self.renv.get_crutch_directory()):
+          if os.path.exists(crutch_config):
             raise StopException(
                 StopException.EPERM,
                 'You cannot invoke `new` on already existing CRUTCH directory')
 
-          self.runners.get('new')(self.renv).activate_features()
           self.renv.menu.parse(argv)
           self.set_default_props()
-
           runner = self.renv.feature_ctrl.get_active_feature('new').create()
+          reinitialize_prompt = True
 
         else:
-          self.check_crutch_config()
-
-          if not runner:
-            self.renv.config_load()
-            self.check_version()
-            self.set_default_props()
-
-            runner = self.runners.get(self.renv.get_project_type())(self.renv)
-            runner.activate_features()
-
           self.renv.menu.parse(argv)
           runner.run()
 

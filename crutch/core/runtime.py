@@ -54,6 +54,8 @@ class RuntimeEnvironment(object):
   Object of this class holds all necessary utility to get runner run
   """
 
+  Default = None
+
   def __init__(self, runners):
     self.menu = None
     self.prompt = None
@@ -64,6 +66,16 @@ class RuntimeEnvironment(object):
     self.lifecycle = Lifecycle.Lifecycle()
     self.prop_to_repl_mirror = self.repl.add_provider('prop-to-repl-mirror', dict())
     self.repl.add_provider('runtime-env-repl', RuntimeEnvReplProvider(self))
+    self.set_as_default()
+
+  @staticmethod
+  def get_default():
+    assert RuntimeEnvironment.Default
+    return RuntimeEnvironment.Default
+
+  def set_as_default(self):
+    assert RuntimeEnvironment.Default is None
+    RuntimeEnvironment.Default = self
 
   def update_properties(self, props):
     self.props.update(props)

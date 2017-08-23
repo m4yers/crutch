@@ -24,16 +24,51 @@ from pygments.lexer import RegexLexer
 from pygments.lexer import words
 from pygments.token import Keyword, Text, Name
 
+from crutch.core.runtime import RuntimeEnvironment
 
-class CommandLexer(RegexLexer):
-  name = 'Command Line'
-  aliases = ['cli']
-  filenames = []
+def get_menu():
+  return RuntimeEnvironment.get_default().menu
 
-  tokens = {
-      'root': [
-          (words(tuple(['new', 'build', 'test']), prefix=r'^', suffix=r'\b'), Keyword.Namespace),
-          (words(tuple(['-f', '--features']), prefix=r'', suffix=r'\b'), Keyword.Type),
-          (words(tuple(['cpp']), prefix=r'', suffix=r'\b'), Name),
-          (r'.*\n', Text)]
-      }
+def create_actions_list():
+  menu = RuntimeEnvironment.get_default().menu
+
+  features = menu.features.keys()
+  actions = list()
+  options = list()
+  names = list()
+
+  for ftr_menu in menu.features.values():
+    for ftr_menu_arg in ftr_menu.arguments:
+      options.extend(ftr_menu_arg.names)
+
+    if not ftr_menu.actions:
+      continue
+
+    actions.extend(ftr_menu.actions.actions.keys())
+
+    for ftr_action in ftr_menu.actions.actions.values():
+      for ftr_action_arg in ftr_action.arguments:
+        options.extend(ftr_action_arg.names)
+
+        if ftr_action_arg.choices:
+          names.extend(ftr_action_arg.choices)
+
+  return tuple(set(features)), tuple(set(actions)), tuple(set(options)), tuple(set(names))
+
+def create_lexer():
+  class CommandLexer(RegexLexer):
+    name = 'Command Line'
+    aliases = ['cli']
+    filenames = []
+
+    crutch_features, crutch_actions, crutch_options, crutch_names = create_actions_list()
+
+    tokens = {
+        'root': [
+            (words(crutch_features, prefix=r'^', suffix=r'\b'), Keyword.Namespace),
+            (words(crutch_actions, prefix=r'', suffix=r'\b'), Keyword.Namespace),
+            (words(crutch_options, prefix=r'', suffix=r'\b'), Keyword.Type),
+            (words(crutch_names, prefix=r'', suffix=r'\b'), Name),
+            (r'.*\n', Text)]
+        }
+  return CommandLexer
