@@ -191,7 +191,8 @@ class Driver(object):
       except StopException as stop:
         if stop.should_exit:
           raise
-        print(stop.message)
+        if stop.message:
+          print(stop.message)
         continue
       except KeyboardInterrupt:
         break

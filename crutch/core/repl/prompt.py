@@ -56,7 +56,7 @@ class Prompt(object):
 
     buf = Buffer(
         history=history,
-        # completer=CrutchCompleter(renv),
+        completer=CrutchCompleter(self.renv),
         complete_while_typing=Always(),
         accept_action=AcceptAction.RETURN_DOCUMENT)
 
@@ -65,7 +65,7 @@ class Prompt(object):
         self.get_long_options)
 
     application = Application(
-        style=style_factory('default'),
+        style=style_factory(),
         layout=layout,
         buffer=buf,
         key_bindings_registry=manager.registry,

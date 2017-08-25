@@ -38,8 +38,9 @@ def create_actions_list():
   names = list()
 
   for ftr_menu in menu.features.values():
-    for ftr_menu_arg in ftr_menu.arguments:
-      options.extend(ftr_menu_arg.names)
+    for argument in [a for a in ftr_menu.arguments if a.is_optional()]:
+      options.append(argument.short_name)
+      options.append(argument.long_name)
 
     if not ftr_menu.actions:
       continue
@@ -47,11 +48,13 @@ def create_actions_list():
     actions.extend(ftr_menu.actions.actions.keys())
 
     for ftr_action in ftr_menu.actions.actions.values():
-      for ftr_action_arg in ftr_action.arguments:
-        options.extend(ftr_action_arg.names)
+      for argument in ftr_action.arguments:
+        if argument.is_optional():
+          options.append(argument.short_name)
+          options.append(argument.long_name)
 
-        if ftr_action_arg.choices:
-          names.extend(ftr_action_arg.choices)
+        if argument.choices:
+          names.extend(argument.choices)
 
   return tuple(set(features)), tuple(set(actions)), tuple(set(options)), tuple(set(names))
 

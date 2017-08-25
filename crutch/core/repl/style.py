@@ -27,11 +27,11 @@ from pygments.util import ClassNotFound
 from prompt_toolkit.styles import default_style_extensions, PygmentsStyle
 
 
-def style_factory(name):
+def style_factory(name='default'):
   try:
     style = pygments.styles.get_style_by_name(name)
   except ClassNotFound:
-    style = pygments.styles.get_style_by_name('native')
+    style = pygments.styles.get_style_by_name('default')
 
   styles = {}
 

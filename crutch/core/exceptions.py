@@ -22,11 +22,12 @@
 
 class StopException(Exception):
   EOK = 0
-  EPERM = 1 # Operation not permitted
-  ECFG = 2  # Config error
-  EVER = 3  # Version error
-  EFTR = 4  # Feature error
-  EFS = 4   # File system error
+  EPAR = 1  # Parser error
+  EPERM = 2 # Operation not permitted
+  ECFG = 3  # Config error
+  EVER = 4  # Version error
+  EFTR = 5  # Feature error
+  EFS = 6   # File system error
 
   def __init__(self, code=EOK, message=None, should_exit=False):
     super(StopException, self).__init__()

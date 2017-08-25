@@ -38,17 +38,32 @@ class MenuArgument(object):
   TYPE_POSITIONAL = 0
   TYPE_OPTIONAL = 1
 
-  def __init__(self, *names, **kwargs):
-    self.type, self.names = self.parse_names(names)
+  def __init__(self, short_name=None, long_name=None, **kwargs):
+    self.kwargs = kwargs
     self.choices = kwargs.get('choices', None)
-    self.help = kwargs.get('help', None)
+    self.default = kwargs.get('default', None)
     self.metavar = kwargs.get('metavar', None)
+    self.nargs = kwargs.get('nargs', 1)
+    self.help = kwargs.get('help', None)
 
-  def parse_names(self, names):
-    if names and names[0][0] == '-':
-      return MenuArgument.TYPE_OPTIONAL, names
+    if short_name or long_name:
+      self.type = MenuArgument.TYPE_OPTIONAL
+      self.short_name = short_name
+      self.long_name = long_name
+    else:
+      self.type = MenuArgument.TYPE_POSITIONAL
+      self.short_name = self.long_name = None
 
-    return MenuArgument.TYPE_POSITIONAL, names
+  def __repr__(self):
+    return '[Argument {} {}]'.format(
+        'optional' if self.is_optional() else 'positional',
+        self.long_name)
+
+  def add_argument(self, parser):
+    if self.is_positional():
+      parser.add_argument(**self.kwargs)
+    else:
+      parser.add_argument(self.short_name, self.long_name, **self.kwargs)
 
   def is_positional(self):
     return self.type == MenuArgument.TYPE_POSITIONAL
@@ -66,9 +81,10 @@ class Menu(object):
     self.arguments = list()
     self.features = dict()
 
-  def add_argument(self, *names, **kwargs):
-    self.arguments.append(MenuArgument(*names, **kwargs))
-    self.parser.add_argument(*names, **kwargs)
+  def add_argument(self, short_name=None, long_name=None, **kwargs):
+    argument = MenuArgument(short_name, long_name, **kwargs)
+    argument.add_argument(self.parser)
+    self.arguments.append(argument)
 
   def add_feature(self, name, desc):
     feature = MenuFeature(name, self.subparsers.add_parser(name, help=desc))
@@ -98,8 +114,12 @@ class Menu(object):
 
     self.renv.lifecycle.mark(Lifecycle.CMD_PARSE, Lifecycle.ORDER_AFTER)
 
+    try:
+      opts = vars(self.parser.parse_args(argv))
+    except SystemExit:
+      raise StopException(StopException.EPAR)
+
     # Normalize project_directory
-    opts = vars(self.parser.parse_args(argv))
     opts['project_directory'] = os.path.abspath(opts['project_directory'])
     self.renv.update_cli_properties(opts)
 
@@ -127,9 +147,10 @@ class MenuAction(object):
     self.name = name
     self.arguments = list()
 
-  def add_argument(self, *names, **kwargs):
-    self.arguments.append(MenuArgument(*names, **kwargs))
-    self.parser.add_argument(*names, **kwargs)
+  def add_argument(self, short_name=None, long_name=None, **kwargs):
+    argument = MenuArgument(short_name, long_name, **kwargs)
+    argument.add_argument(self.parser)
+    self.arguments.append(argument)
 
 
 class MenuFeature(MenuAction):
