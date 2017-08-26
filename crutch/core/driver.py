@@ -234,7 +234,11 @@ class Driver(object):
       code = stop.code
       message = stop.message
 
-    renv.feature_ctrl.deactivate()
+    try:
+      renv.feature_ctrl.deactivate()
+    except StopException as stop:
+      code = stop.code
+      message = stop.message
 
     if code == StopException.EOK:
       self.renv.config_flush()

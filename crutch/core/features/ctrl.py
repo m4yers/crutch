@@ -102,22 +102,27 @@ class FeatureCtrl(object):
   def is_feature(self, name):
     return name in self.features
 
-  def get_category_and_features(self, dep):
-    dep_cat_name = None
-    req_cat_feat = list()
+  def get_features_dependency_closure(self, features):
+    """
+    Return iterative dependency closure of the `features` list. Note, since
+    dependency graph can contain categories, the result may contain categories
+    too.
 
-    if self.is_category(dep):
-      dep_cat_name = dep
-      req_cat_feat.extend(self.categories[dep].defaults)
-    elif self.is_feature(dep):
-      dep_cat_name = self.feature_to_category[dep]
-      req_cat_feat.append(dep)
-    else:
-      raise Exception('Requirement {} is not provided'.format(dep))
+    :param features: `iterable` of feature names
+    :return: `set` containing iterative dependency closure of `features`. May
+      contain category names.
+    """
+    closure = set(features)
 
-    return dep_cat_name, req_cat_feat
+    while True:
+      new = closure | set(sum(map(self.dep_graph.predecessors, closure), []))
+      if closure == new:
+        break
+      closure = new
 
-  def flatten_features(self, features):
+    return closure
+
+  def flatten_with_defaults(self, features):
     """
     If `features` is a `string` equal to `default` collect all default features
     of all categories. If it is a `list` containing category name, replace
@@ -139,77 +144,22 @@ class FeatureCtrl(object):
 
     return set(result)
 
-  def get_features_dependency_closure(self, features):
-    """
-    Return iterative dependency closure of the `features` list. Note, since
-    dependency graph can contain categories, the result may contain categories
-    too.
+  def flatten_with_active(self, request):
+    result = list()
 
-    :param features: `iterable` of feature names
-    :return: `set` containing iterative dependency closure of `features`. May
-      contain category names.
-    """
-    closure = set(features)
+    if request == 'all':
+      request = self.categories.keys()
 
-    while True:
-      new = closure | set(sum(map(self.dep_graph.predecessors, closure), []))
-      if closure == new:
-        break
-      closure = new
+    for name in request:
+      if self.is_category(name):
+        cat_inst = self.active_categories.get(name)
+        if cat_inst:
+          result.extend(cat_inst.get_active_feature_names())
+      else:
+        result.append(name)
+    return result
 
-    return closure
-
-  def get_init_order(self, features):
-    """
-    Derive feature instantiation order from the dependency graph.
-
-    :param features: `iterable` of feature names
-    :returns: total instantiation order which may include categories that
-    require a special handling; also it returns flatten view of the requested
-    features in instantiating order.
-    """
-    flatten = self.flatten_features(features)
-    closure = self.get_features_dependency_closure(flatten)
-
-    subgraph = self.dep_graph.subgraph(closure)
-    total_order = list(nx.topological_sort(subgraph))
-    flatten_order = [f for f in total_order if f in flatten]
-
-    return total_order, flatten_order
-
-  def get_singularity_conflicts(self, features):
-    """
-    Return category/feature conflicts if any, where more than one feature
-    belongs to the same singlular category.
-
-    :param features: `list` of feature names.
-    :returns: True if there are no conflicts.
-    """
-
-    for cat_desc in self.categories.values():
-      if cat_desc.singular:
-        intersection = set(cat_desc.features) & set(features)
-        if len(intersection) > 1:
-          yield cat_desc.name, intersection
-
-  def get_activation_conflicts(self, features):
-    """
-    Verify whether the `features` does not contain conflicting features, that
-    is features of a singular category that is active and has other active
-    features.
-
-    :param features: `list` of feature names.
-    :returns: True if there are no conflicts.
-    """
-
-    for ftr_name in features:
-      cat_name = self.feature_to_category[ftr_name]
-      cat_inst = self.active_categories.get(cat_name, None)
-
-      if cat_inst and not cat_inst.is_active_feature(ftr_name):
-        yield cat_name, ftr_name
-
-  def clean_up_total_order(self, order):
+  def clean_up_activation_order(self, order):
     """
     Total instantiation order may contain categories which results in two
     cases:
@@ -238,12 +188,97 @@ class FeatureCtrl(object):
 
     return result
 
+  def clean_up_deactivation_order(self, order):
+    """
+    Total deactivation order may contain categories that must be flatten into
+    active features.
+
+    :param order: `iterable` total deactivation order
+    :return: cleansed total deactivation order
+    """
+    result = list()
+
+    for name in order:
+      if self.is_category(name):
+        cat_desc = self.categories[name]
+        cat_inst = self.active_categories.get(name, None)
+        if cat_inst:
+          result.extend(set(cat_inst.get_active_feature_names()) - set(order))
+      else:
+        result.append(name)
+
+    return result
+
+  def get_activation_order(self, features):
+    """
+    Derive feature instantiation order from the dependency graph.
+
+    :param features: `iterable` of feature names
+    :returns: total activation order.
+    """
+    flatten = self.flatten_with_defaults(features)
+    closure = self.get_features_dependency_closure(flatten)
+
+    subgraph = self.dep_graph.subgraph(closure)
+    total_order = list(nx.topological_sort(subgraph))
+    total_order = self.clean_up_activation_order(total_order)
+    flatten_order = [f for f in total_order if f in flatten]
+
+    return total_order, flatten_order
+
+  def get_deactivation_order(self, features):
+    flatten = self.flatten_with_active(features)
+
+    closure = set(flatten)
+    while True:
+      new = closure | set(self.get_features_dependency_closure(closure))
+      if closure == new:
+        break
+      closure = new
+
+    subgraph = self.dep_graph.subgraph(closure).reverse()
+    total_order = list(nx.topological_sort(subgraph))
+    total_order = self.clean_up_deactivation_order(total_order)
+    flatten_order = [f for f in total_order if f in flatten]
+
+    return total_order, flatten_order
+
+  def get_singularity_conflicts(self, features):
+    """
+    Return category/feature conflicts if any, where more than one feature
+    belongs to the same singlular category.
+
+    :param features: `list` of feature names.
+    :returns: True if there are no conflicts.
+    """
+
+    for cat_desc in self.categories.values():
+      if cat_desc.singular:
+        intersection = set(cat_desc.features) & set(features)
+        if len(intersection) > 1:
+          yield cat_desc.name, intersection
+
+  def get_activation_conflicts(self, features):
+    """
+    Verify whether the `features` does not contain conflicting features, that
+    is features of a singular category that is active and has other active
+    features.
+
+    :param features: `list` of feature names.
+    :returns: (cat_name, ftr_name) `iterator` if there are conflicts
+    """
+
+    for ftr_name in features:
+      cat_name = self.feature_to_category[ftr_name]
+      cat_inst = self.active_categories.get(cat_name, None)
+
+      if cat_inst and not cat_inst.is_active_feature(ftr_name):
+        yield cat_name, ftr_name
+
   def activate_features(self, request, set_up=False):
     self.renv.lifecycle.mark_before(Lifecycle.FEATURE_CREATION)
 
-    total_order, flatten_order = self.get_init_order(request)
-
-    total_order = self.clean_up_total_order(total_order)
+    total_order, flatten_order = self.get_activation_order(request)
 
     # Check for conflicts within flatten(user requested) order
     conflicts = list()
@@ -306,8 +341,63 @@ class FeatureCtrl(object):
 
     return total_order, flatten_order
 
+  def get_deactivation_conflicts(self, features):
+    """
+    Verify that features about to be removed are not dependencies to other
+    features that will stay
+
+    :param features: `list` of feature names.
+    :returns: (ftr_name, ftr_dep) `iterator` if there are conflicts
+    """
+
+    for ftr_name in features:
+      for ftr_dep in self.dep_graph.successors(ftr_name):
+        if ftr_dep not in features:
+          cat_name = self.feature_to_category[ftr_name]
+          cat_inst = self.active_categories.get(cat_name, None)
+          if cat_inst.is_active_feature(ftr_dep):
+            yield ftr_name, ftr_dep
+
   def deactivate_features(self, request, tear_down=False):
-    pass
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DESTRUCTION)
+
+    total_order, flatten_order = self.get_deactivation_order(request)
+
+    # Before we remove anything we verify if we can do that without breaking
+    # any dependencies
+    conflicts = list()
+    for ftr_name, ftr_dep in self.get_deactivation_conflicts(total_order):
+      conflicts.append(
+          str("Cannot deactivate feature '{}' because it is a direct " +
+              "dependency of '{}'").format(ftr_name, ftr_dep))
+    if conflicts:
+      raise StopException(
+          StopException.EPERM,
+          'There were some conflicting dependencies:\n' + '\n'.join(conflicts))
+
+    for ftr_name in total_order:
+      cat_name = self.feature_to_category[ftr_name]
+      cat_desc = self.categories[cat_name]
+      cat_inst = self.active_categories.get(cat_name, None)
+
+      if cat_inst and cat_inst.is_active_feature(ftr_name):
+        cat_inst.deactivate_feature(ftr_name, tear_down)
+
+        if cat_inst.get_active_features():
+          continue
+
+        self.renv.lifecycle.mark_before(Lifecycle.CATEGORY_DEACTIVATE, cat_name)
+        cat_inst.deactivate()
+        self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_DEACTIVATE, cat_name)
+
+        if tear_down:
+          self.renv.lifecycle.mark_before(Lifecycle.CATEGORY_TEAR_DOWN, cat_name)
+          cat_inst.tear_down()
+          self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_TEAR_DOWN, cat_name)
+
+        del self.categories[cat_name]
+
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DESTRUCTION)
 
 #-API---------------------------------------------------------------------------
 
@@ -358,8 +448,7 @@ class FeatureCtrl(object):
       raise
 
   def deactivate(self):
-    pass
-    # self.deactivate_features(self.renv.get_project_features())
+    self.deactivate_features('all')
 
   def invoke(self, feature):
     category = self.active_categories.get(feature, None)
