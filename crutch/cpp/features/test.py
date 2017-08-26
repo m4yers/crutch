@@ -97,6 +97,17 @@ class FeatureCppTest(Feature):
         handler_add=self.action_add,
         handler_remove=self.action_remove))
 
+  def set_up(self):
+    psub = {'ProjectNameRepl': self.renv.get_project_name()}
+    self.jinja_ftr.copy_folder(
+        os.path.join(self.renv.get_project_type(), 'features', self.name),
+        self.renv.get_project_directory(),
+        psub)
+
+  def tear_down(self):
+    shutil.rmtree(self.get_test_src_dir())
+    shutil.rmtree(self.get_test_bin_dir())
+
 #-SUPPORT-----------------------------------------------------------------------
 
   def get_build_directory(self):
@@ -127,11 +138,18 @@ class FeatureCppTest(Feature):
     build_cmk = renv.get_prop(Build.PROP_CMK)
     test_cfg = renv.get_prop(OPT_CFG)
 
-    build = [build_cmk, '--build', build_dir, '--target', test.target, '--config', test_cfg]
+    build = [
+        build_cmk,
+        '--build', build_dir,
+        '--target', test.target,
+        '--config', test_cfg]
     subprocess.call(' '.join(build), stderr=subprocess.STDOUT, shell=True)
 
     suffix = test_cfg.capitalize() if self.build_ftr.is_xcode() else ''
-    exe = os.path.join(self.get_test_bin_dir(), os.path.sep.join(test.path), suffix, test.target)
+    exe = os.path.join(
+        self.get_test_bin_dir(),
+        os.path.sep.join(test.path),
+        suffix, test.target)
     subprocess.call(exe, stderr=subprocess.STDOUT, shell=True)
 
 #-ACTIONS-----------------------------------------------------------------------
@@ -142,7 +160,8 @@ class FeatureCppTest(Feature):
     build_dir = self.get_build_directory()
     test_cfg = renv.get_prop(OPT_CFG)
     tests = self.get_tests()
-    tests = set(tests) & set([Test(n) for n in renv.get_prop(OPT_TESTS)] or tests)
+    tests = set(tests) & set([Test(n) for n \
+        in renv.get_prop(OPT_TESTS)] or tests)
 
     # Always reconfigure the build folder since there might be new tests
     self.build_ftr.configure(build_dir, test_cfg)
@@ -156,9 +175,13 @@ class FeatureCppTest(Feature):
 
     for tst in self.get_tests():
       if test.name == tst.name:
-        raise StopException(StopException.EFS, "'{}' already exists".format(test.name))
+        raise StopException(
+            StopException.EFS,
+            "'{}' already exists".format(test.name))
       if test.name in tst.name:
-        raise StopException(StopException.EFS, "'{}' is a group of tests".format(test.name))
+        raise StopException(
+            StopException.EFS,
+            "'{}' is a group of tests".format(test.name))
 
     renv.set_prop(OPT_TEST, test.target, mirror_to_repl=True)
 
@@ -189,10 +212,15 @@ class FeatureCppTest(Feature):
     test = Test(renv.get_prop(OPT_TEST))
 
     if test not in self.get_tests():
-      raise StopException(StopException.EFS, "'{}' does not exist".format(test.name))
+      raise StopException(
+          StopException.EFS,
+          "'{}' does not exist".format(test.name))
 
     # Remove test folder
-    shutil.rmtree(os.path.join(self.get_test_src_dir(), os.path.sep.join(test.path)))
+    shutil.rmtree(
+        os.path.join(
+            self.get_test_src_dir(),
+            os.path.sep.join(test.path)))
 
     # Remove empty folders if any
     path = test.path[:-1]

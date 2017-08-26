@@ -80,7 +80,7 @@ class FeatureNew(Feature):
     # already within a `new` feature runner we create type specific runner
     # explicitly and activate its features `manually`.
     runner = renv.runners.get(project_type)(renv)
-    total_order, flatten_order = renv.feature_ctrl.activate_features(
+    _, flatten_order = renv.feature_ctrl.activate_features(
         project_features,
         set_up=True)
 
@@ -89,13 +89,10 @@ class FeatureNew(Feature):
 
     psub = {'ProjectNameRepl': renv.get_project_name()}
 
-    folders = ['main'] + [os.path.join('features', f) for f in total_order]
-
-    for folder in folders:
-      self.jinja_ftr.copy_folder(
-          os.path.join(project_type, folder),
-          project_directory,
-          psub)
+    self.jinja_ftr.copy_folder(
+        os.path.join(project_type, 'main'),
+        project_directory,
+        psub)
 
     print("Done!")
 

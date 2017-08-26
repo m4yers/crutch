@@ -300,7 +300,7 @@ class FeatureCtrl(object):
         self.active_categories[cat_name] = cat_inst
 
       if not cat_inst.is_active_feature(ftr_name):
-        cat_inst.activate_feature(ftr_name)
+        cat_inst.activate_feature(ftr_name, set_up=set_up)
 
     self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DESTRUCTION)
 
