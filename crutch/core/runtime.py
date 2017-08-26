@@ -110,6 +110,9 @@ class RuntimeEnvironment(object):
   def get_project_type(self):
     return self.get_prop('project_type')
 
+  def del_prop(self, name):
+    del self.props[name]
+
   def get_prop(self, name, default=None):
     return self.props.get(name, default)
 

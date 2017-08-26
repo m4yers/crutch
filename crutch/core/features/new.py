@@ -57,6 +57,7 @@ class FeatureNew(Feature):
 
     crutch_directory = renv.get_crutch_directory()
     project_directory = renv.get_project_directory()
+    project_features = renv.get_project_features()
     project_type = renv.get_project_type()
 
     # Create .crutch directory
@@ -77,18 +78,18 @@ class FeatureNew(Feature):
 
     # We need to activate features for the current project type, since we are
     # already within a `new` feature runner we create type specific runner
-    # explicitly and activate its features `manually`. This activation will
-    # usually lead to creation of new feature specific replacements used by
-    # jinja template render
+    # explicitly and activate its features `manually`.
     runner = renv.runners.get(project_type)(renv)
-    all_ftrs, user_ftrs = runner.activate_features()
+    total_order, flatten_order = renv.feature_ctrl.activate_features(
+        project_features,
+        set_up=True)
 
     # Save user features to config
-    renv.set_prop('project_features', user_ftrs, mirror_to_config=True)
+    renv.set_prop('project_features', flatten_order, mirror_to_config=True)
 
     psub = {'ProjectNameRepl': renv.get_project_name()}
 
-    folders = ['main'] + [os.path.join('features', f) for f in all_ftrs]
+    folders = ['main'] + [os.path.join('features', f) for f in total_order]
 
     for folder in folders:
       self.jinja_ftr.copy_folder(

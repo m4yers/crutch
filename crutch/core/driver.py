@@ -109,8 +109,12 @@ class Driver(object):
     return runner
 
   def handle_new(self):
+    self.renv.set_prop('project_features', ['new'])
+
     runner = self.runners.get('new')(self.renv)
     runner.activate_features()
+
+    self.renv.del_prop('project_features')
 
     self.renv.menu.parse(self.renv.get_prop('crutch_argv'))
     self.set_default_props()
@@ -189,7 +193,7 @@ class Driver(object):
 
         self.renv.config_flush()
       except StopException as stop:
-        if stop.should_exit:
+        if stop.terminate:
           raise
         if stop.message:
           print(stop.message)
@@ -207,7 +211,7 @@ class Driver(object):
 
     try:
       renv = self.create_runtime_environment()
-      # renv.lifecycle.enable_tracing()
+      renv.lifecycle.enable_tracing()
       renv.lifecycle.mark(Lifecycle.CRUTCH_START)
 
       argv = self.argv[1:]
@@ -231,6 +235,9 @@ class Driver(object):
       message = stop.message
 
     renv.feature_ctrl.deactivate()
+
+    if code == StopException.EOK:
+      self.renv.config_flush()
 
     # print renv.props.get_print_info()
     # print renv.repl.get_print_info()

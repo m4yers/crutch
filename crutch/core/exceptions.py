@@ -29,8 +29,8 @@ class StopException(Exception):
   EFTR = 5  # Feature error
   EFS = 6   # File system error
 
-  def __init__(self, code=EOK, message=None, should_exit=False):
+  def __init__(self, code=EOK, message=None, terminate=False):
     super(StopException, self).__init__()
     self.code = code
     self.message = message
-    self.should_exit = should_exit
+    self.terminate = terminate

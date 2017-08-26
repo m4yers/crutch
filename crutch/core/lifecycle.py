@@ -20,34 +20,21 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
-# Lifecycle:
-# - CRUTCH_START
-#     - FEATURE_ACTIVATION
-#       - BUILD_DEPENDENCY_GRAPH
-#       - (for every category)
-#         - CATEGORY_CREATE
-#         - FEATURE_CREATE
-#   - CMD_PARSE
-#   - RUNNER_RUN
-#     - FEATURE_DEACTIVATION
-#       - (for every category)
-#         - FEATURE_DESTROY
-#         - CATEGORY_DESTROY
-#   - CONFIG_FLUSH
-# - CRUTCH_STOP
-
 CRUTCH_START = 'crutch-start'
 CONFIG_LOAD = 'config-load'
-FEATURE_ACTIVATION = 'feature-activation'
 BUILD_DEPENDENCY_GRAPH = 'build-dependency-graph'
-CATEGORY_CREATE = 'category-create'
-FEATURE_CREATE = 'feature-create'
+FEATURE_CREATION = 'feature-creation'
+CATEGORY_SET_UP = 'category-set-up'
+CATEGORY_ACTIVATE = 'category-activate'
+FEATURE_SET_UP = 'feature-set-up'
+FEATURE_ACTIVATE = 'feature-activate'
 CMD_PARSE = 'cmd-parse'
 RUNNER_RUN = 'runner-run'
-FEATURE_DEACTIVATION = 'feature-deactivation'
-FEATURE_DESTROY = 'feature-destroy'
-CATEGORY_DESTROY = 'category-destroy'
+FEATURE_DESTRUCTION = 'feature-destruction'
+FEATURE_DEACTIVATE = 'feature-deactivate'
+FEATURE_TEAR_DOWN = 'feature-tear-down'
+CATEGORY_DEACTIVATE = 'category-deactivate'
+CATEGORY_TEAR_DOWN = 'category-tear-down'
 CONFIG_FLUSH = 'config-flush'
 CRUTCH_STOP = 'crutch-stop'
 

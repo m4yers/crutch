@@ -109,26 +109,39 @@ class FeatureCategory(FeatureProto):
     self.features = features
     self.active_features = dict()
 
-  def activate_features(self, feature_names):
-    map(self.activate_feature, feature_names)
+  def activate_features(self, feature_names, set_up=False):
+    map(self.activate_feature, feature_names, set_up)
 
-  def activate_feature(self, feature_name):
+  def activate_feature(self, feature_name, set_up=False):
     if feature_name in self.active_features:
       return
-    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_CREATE, feature_name)
     instance = self.features[feature_name](self.renv)
     self.active_features[feature_name] = instance
-    instance.activate()
-    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_CREATE, feature_name)
 
-  def deactivate_feature(self, feature_name):
-    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DESTROY, feature_name)
-    feature = self.active_features.get(feature_name, None)
-    if not feature:
+    if set_up:
+      self.renv.lifecycle.mark_before(Lifecycle.FEATURE_SET_UP, feature_name)
+      instance.set_up()
+      self.renv.lifecycle.mark_after(Lifecycle.FEATURE_SET_UP, feature_name)
+
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_ACTIVATE, feature_name)
+    instance.activate()
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_ACTIVATE, feature_name)
+
+  def deactivate_feature(self, feature_name, tear_down=False):
+    instance = self.active_features.get(feature_name, None)
+    if not instance:
       raise Exception("You cannot deactivate non-active feature")
-    feature.deactivate()
+
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DEACTIVATE, feature_name)
+    instance.deactivate()
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DEACTIVATE, feature_name)
+
+    if tear_down:
+      self.renv.lifecycle.mark_before(Lifecycle.FEATURE_TEAR_DOWN, feature_name)
+      instance.tear_down()
+      self.renv.lifecycle.mark_after(Lifecycle.FEATURE_TEAR_DOWN, feature_name)
+
     del self.active_features[feature_name]
-    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DESTROY, feature_name)
 
   def get_active_feature_names(self):
     return self.active_features.keys()
@@ -139,6 +152,9 @@ class FeatureCategory(FeatureProto):
   def get_active_feature(self, name):
     assert name in self.active_features
     return self.active_features[name]
+
+  def is_active_feature(self, name):
+    return name in self.active_features
 
   def set_up(self):
     for feature in self.active_features.values():
@@ -160,7 +176,7 @@ class FeatureCategory(FeatureProto):
 
 
 def create_simple_feature_category(menu):
-  class SimpleFeatureCategoryWithMenu(FeatureCategory):
+  class Class(FeatureCategory):
     def __init__(self, renv, features):
-      super(SimpleFeatureCategoryWithMenu, self).__init__(renv, features, menu(renv))
-  return SimpleFeatureCategoryWithMenu
+      super(Class, self).__init__(renv, features, menu(renv))
+  return Class

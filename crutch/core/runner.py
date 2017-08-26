@@ -36,11 +36,11 @@ class Runner(object):
     self.register_feature_category_class(
         'crutch',
         features=['jinja', 'feature', 'new'],
-        defaults=['jinja', 'feature', 'new'],
+        defaults=['feature'],
         singular=False)
     self.register_feature_class('jinja', FeatureJinja)
     self.register_feature_class('feature', FeatureFeature)
-    self.register_feature_class('new', FeatureNew)
+    self.register_feature_class('new', FeatureNew, requires=['jinja'])
 
   def register_default_run_feature(self, name):
     self.default_run_feature = name

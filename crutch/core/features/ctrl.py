@@ -20,6 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import sys
 import os
 
 import networkx as nx
@@ -32,7 +33,8 @@ from crutch.core.replacements import GenerativeReplacementsProvider
 
 class CategoryDesc(object):
 
-  def __init__(self, name, init, features, defaults, requires, singular, always):
+  def __init__(self, name, init, features, defaults, requires,\
+      singular, always):
     self.name = name
     self.init = init
     self.features = features or list()
@@ -60,8 +62,8 @@ class FeatureCtrlReplProvider(GenerativeReplacementsProvider):
     self.data = dict()
     for cat_name, cat_inst in self.renv.feature_ctrl.active_categories.items():
       self.data['project_feature_category_' + cat_name] = True
-      for feat_name in cat_inst.get_active_feature_names():
-        self.data['project_feature_' + feat_name] = True
+      for ftr_name in cat_inst.get_active_feature_names():
+        self.data['project_feature_' + ftr_name] = True
     return self.data
 
 
@@ -69,11 +71,12 @@ class FeatureCtrl(object):
 
   def __init__(self, renv):
     self.renv = renv
-    self.categories = dict()
 
+    self.dep_graph = nx.DiGraph()
     self.features = dict()
     self.feature_to_category = dict()
 
+    self.categories = dict()
     self.active_categories = dict()
 
     renv.repl.add_provider('feature-ctrl-repl', FeatureCtrlReplProvider(renv))
@@ -85,8 +88,8 @@ class FeatureCtrl(object):
       if cat_name in self.active_categories:
         result += '!'
       result += cat_name + os.linesep + '['
-      for feat_name in cat.features:
-        result += feat_name + ' '
+      for ftr_name in cat.features:
+        result += ftr_name + ' '
       result += ']' + os.linesep
 
     return result
@@ -99,180 +102,264 @@ class FeatureCtrl(object):
   def is_feature(self, name):
     return name in self.features
 
-  def get_category_and_features(self, req):
-    req_cat_name = None
+  def get_category_and_features(self, dep):
+    dep_cat_name = None
     req_cat_feat = list()
 
-    if self.is_category(req):
-      req_cat_name = req
-      req_cat_feat.extend(self.categories[req].defaults)
-    elif self.is_feature(req):
-      req_cat_name = self.feature_to_category[req]
-      req_cat_feat.append(req)
+    if self.is_category(dep):
+      dep_cat_name = dep
+      req_cat_feat.extend(self.categories[dep].defaults)
+    elif self.is_feature(dep):
+      dep_cat_name = self.feature_to_category[dep]
+      req_cat_feat.append(dep)
     else:
-      raise Exception('Requirement {} is not provided'.format(req))
+      raise Exception('Requirement {} is not provided'.format(dep))
 
-    return req_cat_name, req_cat_feat
+    return dep_cat_name, req_cat_feat
 
-  def normalize_project_features(self, features):
-    result = dict()
+  def flatten_features(self, features):
+    """
+    If `features` is a `string` equal to `default` collect all default features
+    of all categories. If it is a `list` containing category name, replace
+    those with default features of that category. Features names are preserved.
+
+    :param features: `list` of feature(category) names or `string` default
+    """
+    result = list()
 
     if features == 'default':
-      for cat_name, cat in self.categories.items():
-        if cat.defaults:
-          result[cat_name] = cat.defaults
+      result.extend(sum([d.defaults for d in self.categories.values()], []))
 
     elif features:
-
       for name in features:
-
         if self.is_category(name):
-          if name in result:
-            raise Exception('You must not pass features while using general category')
-          result[name] = self.categories[name].defaults
-
+          result.extend(self.categories[name].defaults)
         elif self.is_feature(name):
-          cat_name = self.feature_to_category[name]
-          cat = self.categories[cat_name]
-          if cat_name in result and cat.singular:
-            raise Exception('You cannot pass multiple features for a singular category')
-          features = result.get(cat_name, list())
-          features.append(name)
-          result[cat_name] = features
+          result.append(name)
 
-    # Always instantiated default CRUTCH category defaults
-    crutch_category = self.categories['crutch']
-    result['crutch'] = crutch_category.defaults
+    return set(result)
 
-    return result
+  def get_features_dependency_closure(self, features):
+    """
+    Return iterative dependency closure of the `features` list. Note, since
+    dependency graph can contain categories, the result may contain categories
+    too.
 
-  def build_dependency_graph(self, cat_to_feats):
-    cat_queue = cat_to_feats.keys()
-    graph = nx.DiGraph()
-    graph.add_nodes_from(cat_queue)
-    marked = set()
-    while cat_queue:
-      cat_name = cat_queue.pop()
+    :param features: `iterable` of feature names
+    :return: `set` containing iterative dependency closure of `features`. May
+      contain category names.
+    """
+    closure = set(features)
 
-      # This is a circular dependency. Cycles will be reported later
-      if cat_name in marked:
-        continue
+    while True:
+      new = closure | set(sum(map(self.dep_graph.predecessors, closure), []))
+      if closure == new:
+        break
+      closure = new
 
-      marked.add(cat_name)
-      cat = self.categories[cat_name]
-
-      # Add dependencies for the category itself
-      for req in cat.requires:
-        if self.is_category(req):
-          req_cat_name = req
-          # If required category is not already in the graph, add it and queue
-          # it for the next cycle to process
-          if req_cat_name not in cat_to_feats:
-            graph.add_edge(req_cat_name, cat_name)
-            cat = self.categories[req_cat_name]
-            cat_to_feats[req_cat_name] = cat.defaults
-            cat_queue.append(req_cat_name)
-        elif self.is_feature(req):
-          req_cat_name = self.feature_to_category[req]
-          cat = self.categories[req_cat_name]
-
-          # If required category is not already in the graph, add it with just
-          # this feature  and queue it for the next cycle to process
-          if req_cat_name not in cat_to_feats:
-            cat = self.categories[req_cat_name]
-            cat_to_feats[req_cat_name] = [req]
-            cat_queue.append(req_cat_name)
-
-          # Otherwise append the feature to the list
-          elif not cat.singular:
-            cat_to_feats[req_cat_name].append(req)
-
-          graph.add_edge(req_cat_name, cat_name)
-
-    return graph, cat_to_feats
+    return closure
 
   def get_init_order(self, features):
     """
-    Build category and feature instantiation order
+    Derive feature instantiation order from the dependency graph.
+
+    :param features: `iterable` of feature names
+    :returns: total instantiation order which may include categories that
+    require a special handling; also it returns flatten view of the requested
+    features in instantiating order.
     """
-    cat_to_feats = self.normalize_project_features(features)
-    # Ignore CRUTCH services, they are specially handler and do not require
-    # explicit mentioning
-    requested_ftrs = sum([cat_to_feats[c] for c in cat_to_feats if c != 'crutch'], [])
-    graph, cat_to_feats = self.build_dependency_graph(cat_to_feats)
+    flatten = self.flatten_features(features)
+    closure = self.get_features_dependency_closure(flatten)
 
-    # If not DAG we cannot build graph's topology
-    if not nx.is_directed_acyclic_graph(graph):
-      raise Exception(
-          'Features you have provided form a circular dependency:\n' +
-          list(nx.find_cycle(graph, orientation='ignore')))
+    subgraph = self.dep_graph.subgraph(closure)
+    total_order = list(nx.topological_sort(subgraph))
+    flatten_order = [f for f in total_order if f in flatten]
 
-    cat_order = list(nx.topological_sort(graph))
+    return total_order, flatten_order
 
-    # Collect all features in category instantiation order
-    feat_order = list()
-    for cat_name in cat_order:
-      feat_order.extend(cat_to_feats[cat_name])
+  def get_singularity_conflicts(self, features):
+    """
+    Return category/feature conflicts if any, where more than one feature
+    belongs to the same singlular category.
 
-    return cat_order, feat_order, requested_ftrs
+    :param features: `list` of feature names.
+    :returns: True if there are no conflicts.
+    """
 
-  def activate_features(self, features):
-    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_ACTIVATION)
+    for cat_desc in self.categories.values():
+      if cat_desc.singular:
+        intersection = set(cat_desc.features) & set(features)
+        if len(intersection) > 1:
+          yield cat_desc.name, intersection
 
-    renv = self.renv
-    cat_order, feat_order, requested_ftrs = self.get_init_order(features)
+  def get_activation_conflicts(self, features):
+    """
+    Verify whether the `features` does not contain conflicting features, that
+    is features of a singular category that is active and has other active
+    features.
 
-    for cat_name in cat_order:
+    :param features: `list` of feature names.
+    :returns: True if there are no conflicts.
+    """
+
+    for ftr_name in features:
+      cat_name = self.feature_to_category[ftr_name]
+      cat_inst = self.active_categories.get(cat_name, None)
+
+      if cat_inst and not cat_inst.is_active_feature(ftr_name):
+        yield cat_name, ftr_name
+
+  def clean_up_total_order(self, order):
+    """
+    Total instantiation order may contain categories which results in two
+    cases:
+      - Case 1: There are features in that total order that belong to the
+        category, and we simply remove this category from the list, this at
+        least one feature of this category will be instantiated.
+      - Case 2: There are no features in that total order that belong to the
+        category, so we need to check the active categories, if this specific
+        category is already active we simply remove it from the order,
+        otherwise we add its defaults to that order.
+
+    :param order: `iterable` total instantiation order
+    :return: cleansed total instantiation order
+    """
+    result = list()
+
+    for name in order:
+      if self.is_category(name):
+        cat_desc = self.categories[name]
+        if not (set(order) & set(cat_desc.features)):
+          cat_inst = self.active_categories.get(name, None)
+          if not cat_inst:
+            result.extend(cat_desc.defaults)
+      else:
+        result.append(name)
+
+    return result
+
+  def activate_features(self, request, set_up=False):
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_CREATION)
+
+    total_order, flatten_order = self.get_init_order(request)
+
+    total_order = self.clean_up_total_order(total_order)
+
+    # Check for conflicts within flatten(user requested) order
+    conflicts = list()
+    for category, features in self.get_singularity_conflicts(flatten_order):
+      conflicts.append(
+          str("Singular category '{}' cannot have all of '{}' features " +
+              "activated at the same time").format(category, features))
+    if conflicts:
+      raise StopException(
+          StopException.EFTR,
+          'There were some conflicting dependencies:\n' + '\n'.join(conflicts))
+
+    # Check for total order conflicts relative to already active categories
+    conflicts = list()
+    for category, feature in self.get_activation_conflicts(total_order):
+      # In case the category was requested explicitly we can ignore this
+      # conflict, since in this case user requested any feature(default or
+      # already enabled) of that category
+      if category in request:
+        continue
+
+      # Inability to instantiate an explicit request is an error
+      if feature in request:
+        conflicts.append(
+            str("Cannot activate '{}' feature because its category '{}' is " +
+                "singular and already contains active features").
+            format(feature, category))
+
+    if conflicts:
+      raise StopException(
+          StopException.EPERM,
+          'There were some conflicting dependencies:\n' + '\n'.join(conflicts))
+
+    # Finally instantiate, activate and set up if needed all the features
+    for ftr_name in total_order:
+      cat_name = self.feature_to_category[ftr_name]
       cat_desc = self.categories[cat_name]
-      cat_active_features = [f for f in feat_order if f in cat_desc.features]
       cat_inst = self.active_categories.get(cat_name, None)
 
       if not cat_inst:
-        self.renv.lifecycle.mark_before(Lifecycle.CATEGORY_CREATE, cat_name)
         cat_inst = cat_desc.init(
-            renv,
+            self.renv,
             {n: self.features[n].init for n in cat_desc.features})
+
+        if set_up:
+          self.renv.lifecycle.mark_before(Lifecycle.CATEGORY_SET_UP, cat_name)
+          cat_inst.set_up()
+          self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_SET_UP, cat_name)
+
+        self.renv.lifecycle.mark_before(Lifecycle.CATEGORY_ACTIVATE, cat_name)
         cat_inst.activate()
+        self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_ACTIVATE, cat_name)
+
         self.active_categories[cat_name] = cat_inst
-        cat_inst.activate_features(cat_active_features)
-        self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_CREATE, cat_name)
-      else:
-        # If the category is active and singular we cannot enable more features in it
-        if cat_desc.singular and cat_inst.get_active_features():
-          # If the category or one of its features were requested explicityly we need to nofity user
-          if cat_name in features or set(cat_active_features) & set(features):
-            raise StopException(
-                StopException.EFTR,
-                str(
-                    "Cannot activate feature '{}', since its category '{}' supports only " +
-                    "one active feature at a time").format(cat_active_features[0], cat_name))
-          # otherwise we can just continue
-          else:
-            continue
-        cat_inst.activate_features(cat_active_features)
 
-    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_ACTIVATION)
+      if not cat_inst.is_active_feature(ftr_name):
+        cat_inst.activate_feature(ftr_name)
 
-    return feat_order, requested_ftrs
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DESTRUCTION)
+
+    return total_order, flatten_order
+
+  def deactivate_features(self, request, tear_down=False):
+    pass
 
 #-API---------------------------------------------------------------------------
 
-  def register_feature_category_class(self, cat_name, cat_class=FeatureCategory,\
-      features=None, defaults=None, requires=None, singular=True, always=True):
-    self.categories[cat_name] = \
-        CategoryDesc(cat_name, cat_class, features, defaults, requires, singular, always)
-    for feat_name in features:
-      self.feature_to_category[feat_name] = cat_name
+  def register_feature_category_class(self, cat_name, \
+      cat_class=FeatureCategory, features=None, defaults=None, requires=None,\
+      singular=True, always=True):
+    self.categories[cat_name] = CategoryDesc(
+        cat_name, cat_class, features, defaults, requires, singular, always)
+    for ftr_name in features:
+      self.feature_to_category[ftr_name] = cat_name
 
-  def register_feature_class(self, feat_name, feature_class):
-    self.features[feat_name] = FeatureDesc(feat_name, feature_class, None)
+  def register_feature_class(self, ftr_name, feature_class, requires=None):
+    cat_name = self.feature_to_category.get(ftr_name, None)
+    if not cat_name:
+      StopException(
+          StopException.EFTR,
+          "Category for feature '{}' is not defined".format(ftr_name),
+          True)
+
+    self.dep_graph.add_node(ftr_name)
+
+    # NOTE: Dependencies can contain categories
+
+    # Add all category requirements
+    cat_desc = self.categories[cat_name]
+    for requirement in cat_desc.requires:
+      if not self.dep_graph.has_edge(requirement, ftr_name):
+        self.dep_graph.add_edge(requirement, ftr_name)
+
+    # Add feature's own requirements
+    ftr_desc = FeatureDesc(ftr_name, feature_class, requires)
+    for requirement in ftr_desc.requires:
+      if not self.dep_graph.has_edge(requirement, ftr_name):
+        self.dep_graph.add_edge(requirement, ftr_name)
+
+    if not nx.is_directed_acyclic_graph(self.dep_graph):
+      raise Exception(
+          'Features you have provided form a circular dependency:\n' +
+          list(nx.find_cycle(self.dep_graph, orientation='ignore')))
+
+    self.features[ftr_name] = ftr_desc
 
   def activate(self):
-    return self.activate_features(self.renv.get_project_features())
+    try:
+      return self.activate_features(self.renv.get_project_features())
+    except StopException as stop:
+      stop.terminate = True
+      raise
 
   def deactivate(self):
-    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DEACTIVATION)
-    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DEACTIVATION)
+    pass
+    # self.deactivate_features(self.renv.get_project_features())
 
   def invoke(self, feature):
     category = self.active_categories.get(feature, None)
