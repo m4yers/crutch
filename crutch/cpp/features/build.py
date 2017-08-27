@@ -21,6 +21,7 @@
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import subprocess
+import shutil
 import os
 
 from crutch.core.features.basics import create_simple_feature_category
@@ -51,9 +52,21 @@ class FeatureCppBuild(Feature):
   def __init__(self, renv, name, generator):
     self.name = name
     self.generator = generator
+    self.jinja_ftr = renv.feature_ctrl.get_active_feature('jinja')
     super(FeatureCppBuild, self).__init__(renv, FeatureMenuCppBuild(\
         renv, name, self.action_build))
     self.renv.set_prop_if_not_in(PROP_CMK, 'cmake', mirror_to_config=True)
+
+  def set_up(self):
+    psub = {'ProjectNameRepl': self.renv.get_project_name()}
+    self.jinja_ftr.copy_folder(
+        os.path.join(self.renv.get_project_type(), 'features', NAME),
+        self.renv.get_project_directory(),
+        psub)
+
+  def tear_down(self):
+    crutch_directory = self.renv.get_crutch_directory()
+    shutil.rmtree(os.path.abspath(os.path.join(crutch_directory, NAME)))
 
 #-SUPPORT-----------------------------------------------------------------------
 
