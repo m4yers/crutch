@@ -229,7 +229,6 @@ class FeatureCtrl(object):
     :return: cleansed total deactivation order
     """
     result = list()
-
     for name in order:
       if self.is_category(name):
         cat_inst = self.active_categories.get(name, None)
@@ -241,7 +240,6 @@ class FeatureCtrl(object):
           result.extend(total_order)
       else:
         result.append(name)
-
     return list(unique_everseen(result))
 
   def get_activation_order(self, request):
@@ -309,7 +307,6 @@ class FeatureCtrl(object):
           if cat_inst and cat_inst.is_active_feature(ftr_dep):
             total_order.remove(implicit)
             break
-
 
     return total_order, flatten_order
 
@@ -438,10 +435,6 @@ class FeatureCtrl(object):
 
     total_order, flatten_order = self.get_deactivation_order(request)
 
-    print 'request: {}'.format(request)
-    print 'total: {}'.format(total_order)
-    print 'flatten: {}'.format(flatten_order)
-
     # Before we remove anything we verify if we can do that without breaking
     # any dependencies
     conflicts = list()
@@ -477,7 +470,7 @@ class FeatureCtrl(object):
           cat_inst.tear_down()
           self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_TEAR_DOWN, cat_name)
 
-        del self.categories[cat_name]
+        del self.active_categories[cat_name]
 
     self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DESTRUCTION, total_order)
 
