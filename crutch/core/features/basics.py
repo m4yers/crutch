@@ -42,6 +42,11 @@ class FeatureMenu(object):
   def add_default_action(self, desc, handler):
     return self.add_action('default', desc, handler)
 
+# class FeatureProperties(object):
+#
+#   def __init__(self, is_pure=False, requires=[]):
+#     self.is_pure = is_pure
+#     self.requires = requires
 
 class FeatureProto(object):
   """

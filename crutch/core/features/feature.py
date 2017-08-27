@@ -20,26 +20,35 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from crutch.core.exceptions import StopException
 from crutch.core.features.basics import Feature, FeatureMenu
 
 
 NAME = 'feature'
-OPT_FEATURE = 'feature_feature_feature'
+OPT_FEATURES = 'feature_feature_features'
 
 
 class FeatureMenuCppFileManager(FeatureMenu):
 
-  def __init__(self, renv, handler_view=None, handler_enable=None, handler_disable=None):
-    super(FeatureMenuCppFileManager, self).__init__(renv, NAME, 'Feature Manager')
+  def __init__(
+      self, renv, handler_view=None, handler_add=None, handler_remove=None):
+    super(FeatureMenuCppFileManager, self).__init__(
+        renv, NAME, 'Feature Manager')
 
     self.add_default_action('View all the features', handler_view)
 
-    enable = self.add_action('enable', 'Enable a feature', handler_enable)
-    enable.add_argument(dest=OPT_FEATURE, metavar='FEATURE', help='Feature to enable')
+    add = self.add_action('add', 'Activate features', handler_add)
+    add.add_argument(
+        dest=OPT_FEATURES,
+        metavar='FEATURE',
+        nargs='*',
+        help='Feature to activate')
 
-    disable = self.add_action('disable', 'Disable a feature', handler_disable)
-    disable.add_argument(dest=OPT_FEATURE, metavar='FEATURE', help='Feature to disable')
+    remove = self.add_action('remove', 'Add features', handler_remove)
+    remove.add_argument(
+        dest=OPT_FEATURES,
+        metavar='FEATURE',
+        nargs='*',
+        help='Feature to deactivate')
 
 
 class FeatureStatus(object):
@@ -74,8 +83,8 @@ class FeatureFeature(Feature):
     super(FeatureFeature, self).__init__(renv, FeatureMenuCppFileManager(
         renv,
         handler_view=self.action_view,
-        handler_enable=self.action_enable,
-        handler_disable=self.action_disable))
+        handler_add=self.action_add,
+        handler_remove=self.action_remove))
 
 #-SUPPORT-----------------------------------------------------------------------
 
@@ -124,39 +133,20 @@ class FeatureFeature(Feature):
     for cat_status in self.get_categories_status():
       print '\n{}'.format(cat_status)
 
-  def action_enable(self):
-    renv = self.renv
-    ctrl = renv.feature_ctrl
-    name = renv.get_prop(OPT_FEATURE)
-    status = self.get_status(name)
-    if status.active:
-      raise StopException(StopException.EFTR, "Feature '{}' already enabled".format(name))
-    else:
-      _, requested_ftrs = ctrl.activate_features([name])
-      user_ftrs = list(set(renv.get_project_features()) | set(requested_ftrs))
-      renv.set_prop('project_features', user_ftrs, mirror_to_config=True)
+  def action_add(self):
+    names = self.renv.get_prop(OPT_FEATURES)
+    _, flatten_order = self.renv.feature_ctrl.activate_features(names, True)
+    project_features = self.renv.get_project_features()
+    self.renv.set_prop(
+        'project_features',
+        list(set(project_features) | set(flatten_order)),
+        mirror_to_config=True)
 
-  def action_disable(self):
-    raise StopException(StopException.EFTR, "Not implemented")
-    # renv = self.renv
-    # ctrl = renv.feature_ctrl
-    # name = renv.get_prop(OPT_FEATURE)
-    # status = self.get_status(name)
-    # if status.active:
-    #   normalized = ctrl.normalize_project_features([name])
-    #   ftr_name = sum(normalized.values(), [])[0]
-    #   project_features = renv.get_project_features()
-    #   # We can only remove an explicit feature, all dependency features won't be in that list,
-    #   # unless feature is explicit and is a dependency at the same time, in this case it is still
-    #   # alright because it will be instantiated next time as an implicit dependency if needed
-    #   if ftr_name in project_features:
-    #     project_features.remove(ftr_name)
-    #     renv.set_prop('project_features', project_features, mirror_to_config=True)
-    #   else:
-    #     raise StopException(
-    #         StopException.EFTR,
-    #         "You cannot disable a feature that is a dependency of another")
-    # else:
-    #   raise StopException(
-    #       StopException.EFTR,
-    #       "Feature '{}' is not enabled".format(name))
+  def action_remove(self):
+    names = self.renv.get_prop(OPT_FEATURES)
+    _, flatten_order = self.renv.feature_ctrl.deactivate_features(names, True)
+    project_features = self.renv.get_project_features()
+    self.renv.set_prop(
+        'project_features',
+        list(set(project_features) - set(flatten_order)),
+        mirror_to_config=True)
