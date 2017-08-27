@@ -234,10 +234,10 @@ class FeatureCtrl(object):
       if self.is_category(name):
         cat_inst = self.active_categories.get(name, None)
         if cat_inst:
-          # We eagerly add every dependency of the defaults, later we will
-          # remove duplicates
+          # We eagerly add every active dependency, later we will remove
+          # duplicates
           total_order, _ = self.get_deactivation_order(
-              set(cat_inst.get_active_feature_names()) - set(order))
+              cat_inst.get_active_feature_names())
           result.extend(total_order)
       else:
         result.append(name)
@@ -277,7 +277,6 @@ class FeatureCtrl(object):
     :param request: `iterable` of feature and categories names
     :returns: total deactivation order.
     """
-
     if request == 'all':
       request = self.categories.keys()
 
@@ -299,6 +298,18 @@ class FeatureCtrl(object):
     total_order = self.get_reversed_topological_order(closure)
     total_order = self.clean_up_deactivation_order(total_order)
     flatten_order = [f for f in total_order if f in flatten]
+
+    # Remove implicit dependencies if some other feature that we won't remove
+    # depends on it
+    for implicit in [f for f in total_order if f not in flatten_order]:
+      for ftr_dep in self.dep_graph.successors(implicit):
+        if ftr_dep not in total_order:
+          cat_name = self.feature_to_category[ftr_dep]
+          cat_inst = self.active_categories.get(cat_name, None)
+          if cat_inst and cat_inst.is_active_feature(ftr_dep):
+            total_order.remove(implicit)
+            break
+
 
     return total_order, flatten_order
 
@@ -414,19 +425,22 @@ class FeatureCtrl(object):
     :param features: `list` of feature names.
     :returns: (ftr_name, ftr_dep) `iterator` if there are conflicts
     """
-
     for ftr_name in features:
       for ftr_dep in self.dep_graph.successors(ftr_name):
         if ftr_dep not in features:
-          cat_name = self.feature_to_category[ftr_name]
+          cat_name = self.feature_to_category[ftr_dep]
           cat_inst = self.active_categories.get(cat_name, None)
-          if cat_inst.is_active_feature(ftr_dep):
+          if cat_inst and cat_inst.is_active_feature(ftr_dep):
             yield ftr_name, ftr_dep
 
   def deactivate_features(self, request, tear_down=False, skip=None):
     self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DESTRUCTION, request)
 
     total_order, flatten_order = self.get_deactivation_order(request)
+
+    print 'request: {}'.format(request)
+    print 'total: {}'.format(total_order)
+    print 'flatten: {}'.format(flatten_order)
 
     # Before we remove anything we verify if we can do that without breaking
     # any dependencies
