@@ -23,8 +23,9 @@
 import shutil
 import os
 
-from crutch.core.exceptions import StopException
+import prompter
 
+from crutch.core.exceptions import StopException
 from crutch.core.features.basics import create_simple_feature_category
 from crutch.core.features.basics import Feature, FeatureMenu
 
@@ -39,16 +40,27 @@ EXT_HPP = '.hpp'
 class FeatureMenuCppFileManager(FeatureMenu):
 
   def __init__(self, renv, handler_add=None, handler_remove=None):
-    super(FeatureMenuCppFileManager, self).__init__(renv, NAME, 'C++ File Manager')
+    super(FeatureMenuCppFileManager, self).__init__(
+        renv, NAME, 'C++ File Manager')
 
     add = self.add_action('add', 'Add C++ file group', handler_add)
-    add.add_argument(dest=OPT_GROUP, metavar='GROUP', help='C++ file group to add')
+    add.add_argument(
+        dest=OPT_GROUP,
+        metavar='GROUP',
+        help='C++ file group to add')
 
-    remove = self.add_action('remove', 'Remove C++ file group', handler_remove)
-    remove.add_argument(dest=OPT_GROUP, metavar='GROUP', help='C++ file group to remove')
+    remove = self.add_action(
+        'remove',
+        'Remove C++ file group',
+        handler_remove)
+    remove.add_argument(
+        dest=OPT_GROUP,
+        metavar='GROUP',
+        help='C++ file group to remove')
 
 
-FeatureCategoryCppFile = create_simple_feature_category(FeatureMenuCppFileManager)
+FeatureCategoryCppFile = create_simple_feature_category(
+    FeatureMenuCppFileManager)
 
 
 class FileGroup(object):
@@ -70,13 +82,17 @@ class FileGroup(object):
     return os.path.join(*self.src)
 
   def exists(self):
-    return os.path.exists(self.get_include_path()) or os.path.exists(self.get_src_path())
+    return os.path.exists(self.get_include_path()) or \
+        os.path.exists(self.get_src_path())
 
   def delete(self):
+    deleted = list()
     if os.path.exists(self.get_include_path()):
+      deleted.append(self.get_include_path())
       os.remove(self.get_include_path())
 
     if os.path.exists(self.get_src_path()):
+      deleted.append(self.get_src_path())
       os.remove(self.get_src_path())
 
     # Remove empty folders
@@ -91,6 +107,8 @@ class FileGroup(object):
         shutil.rmtree(src)
 
       path = path[:-1]
+
+    return deleted
 
   def __repr__(self):
     return '[FileGroup {}]'.format(self.name)
@@ -128,7 +146,9 @@ class FeatureCppFileManager(Feature):
     group = FileGroup(renv.get_prop(OPT_GROUP), project_directory, project_name)
 
     if group.exists():
-      raise StopException(StopException.EFS, "File group '{}' already exists".format(group.name))
+      raise StopException(
+          StopException.EFS,
+          "File group '{}' already exists".format(group.name))
 
     jdir = os.path.join(renv.get_project_type(), 'other', NAME)
     psub = {'FileGroupRepl': os.path.join(project_name, *group.path)}
@@ -146,6 +166,13 @@ class FeatureCppFileManager(Feature):
     group = FileGroup(renv.get_prop(OPT_GROUP), project_directory, project_name)
 
     if not group.exists():
-      raise StopException(StopException.EFS, "File group '{}' does not exist".format(group.name))
+      raise StopException(
+          StopException.EFS,
+          "File group '{}' does not exist".format(group.name))
 
-    group.delete()
+    if not prompter.yesno("Are you sure?"):
+      raise StopException("Nothing was removed")
+
+    print("Removed: ")
+    for deleted in group.delete():
+      print("{}".format(deleted))
