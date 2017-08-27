@@ -35,6 +35,9 @@ NAME = 'test'
 OPT_CFG = 'feature_test_config'
 OPT_TEST = 'feature_test_group'
 OPT_TESTS = 'feature_test_tests'
+CONFIG_DEBUG = 'debug'
+CONFIG_RELEASE = 'release'
+CONFIG_CHOICES = [CONFIG_DEBUG, CONFIG_RELEASE]
 
 
 class FeatureMenuCppTest(FeatureMenu):
@@ -45,7 +48,7 @@ class FeatureMenuCppTest(FeatureMenu):
     default = self.add_default_action('Test project', handler_default)
     default.add_argument(
         '-c', '--config', dest=OPT_CFG, metavar='CONFIG',
-        default='debug', choices=['debug', 'release'],
+        default='debug', choices=CONFIG_CHOICES,
         help='Select project config')
     default.add_argument(
         '-t', '--tests', dest=OPT_TESTS, metavar='TESTS',
@@ -106,7 +109,10 @@ class FeatureCppTest(Feature):
 
   def tear_down(self):
     shutil.rmtree(self.get_test_src_dir())
-    shutil.rmtree(self.get_test_bin_dir())
+    for config in CONFIG_CHOICES:
+      bin_dir = self.build_ftr.get_build_directory(config)
+      if os.path.exists(bin_dir):
+        shutil.rmtree(bid_dir)
 
 #-SUPPORT-----------------------------------------------------------------------
 

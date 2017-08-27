@@ -423,10 +423,14 @@ class FeatureCtrl(object):
           if cat_inst.is_active_feature(ftr_dep):
             yield ftr_name, ftr_dep
 
-  def deactivate_features(self, request, tear_down=False):
+  def deactivate_features(self, request, tear_down=False, skip=None):
     self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DESTRUCTION, request)
 
     total_order, flatten_order = self.get_deactivation_order(request)
+
+    print 'request: {}'.format(request)
+    print 'total: {}'.format(total_order)
+    print 'flatten: {}'.format(flatten_order)
 
     # Before we remove anything we verify if we can do that without breaking
     # any dependencies
@@ -441,6 +445,9 @@ class FeatureCtrl(object):
           'There were some conflicting dependencies:\n' + '\n'.join(conflicts))
 
     for ftr_name in total_order:
+      if skip and ftr_name in skip:
+        continue
+
       cat_name = self.feature_to_category[ftr_name]
       cat_inst = self.active_categories.get(cat_name, None)
 

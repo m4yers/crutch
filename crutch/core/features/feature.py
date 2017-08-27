@@ -143,9 +143,15 @@ class FeatureFeature(Feature):
         mirror_to_config=True)
 
   def action_remove(self):
-    names = self.renv.get_prop(OPT_FEATURES)
-    _, flatten_order = self.renv.feature_ctrl.deactivate_features(names, True)
     project_features = self.renv.get_project_features()
+    names = self.renv.get_prop(OPT_FEATURES)
+
+    _, flatten_order = self.renv.feature_ctrl.get_deactivation_order(names)
+    self.renv.feature_ctrl.deactivate_features(
+        names,
+        tear_down=True,
+        skip=set(project_features) - set(flatten_order))
+
     self.renv.set_prop(
         'project_features',
         list(set(project_features) - set(flatten_order)),

@@ -66,7 +66,9 @@ class FeatureCppBuild(Feature):
 
   def tear_down(self):
     crutch_directory = self.renv.get_crutch_directory()
-    shutil.rmtree(os.path.abspath(os.path.join(crutch_directory, NAME)))
+    rem_dir = os.path.join(crutch_directory, NAME)
+    if os.path.exists(rem_dir):
+      shutil.rmtree(rem_dir)
 
 #-SUPPORT-----------------------------------------------------------------------
 
