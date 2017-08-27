@@ -63,6 +63,6 @@ class Runner(object):
   def run(self):
     renv = self.renv
     run_feature = renv.get_run_feature() or self.default_run_feature
-    renv.lifecycle.mark(Lifecycle.RUNNER_RUN, Lifecycle.ORDER_BEFORE, run_feature)
+    renv.lifecycle.mark_before(Lifecycle.RUNNER_RUN, run_feature)
     self.invoke_feature(run_feature)
-    renv.lifecycle.mark(Lifecycle.RUNNER_RUN, Lifecycle.ORDER_AFTER, run_feature)
+    renv.lifecycle.mark_after(Lifecycle.RUNNER_RUN, run_feature)

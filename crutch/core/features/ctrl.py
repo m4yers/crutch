@@ -20,10 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
 import os
 
 import networkx as nx
+
+from more_itertools import unique_everseen
 
 import crutch.core.lifecycle as Lifecycle
 
@@ -60,10 +61,21 @@ class FeatureCtrlReplProvider(GenerativeReplacementsProvider):
 
   def generate(self):
     self.data = dict()
-    for cat_name, cat_inst in self.renv.feature_ctrl.active_categories.items():
+    ctrl = self.renv.feature_ctrl
+
+    # Add already active features/categories
+    for cat_name, cat_inst in ctrl.active_categories.items():
       self.data['project_feature_category_' + cat_name] = True
       for ftr_name in cat_inst.get_active_feature_names():
         self.data['project_feature_' + ftr_name] = True
+
+    # Add features and categoires to be activated if any
+    if ctrl.features_in_activation_process:
+      for ftr_name in ctrl.features_in_activation_process:
+        cat_name = ctrl.feature_to_category[ftr_name]
+        self.data['project_feature_category_' + cat_name] = True
+        self.data['project_feature_' + ftr_name] = True
+
     return self.data
 
 
@@ -75,6 +87,7 @@ class FeatureCtrl(object):
     self.dep_graph = nx.DiGraph()
     self.features = dict()
     self.feature_to_category = dict()
+    self.features_in_activation_process = None
 
     self.categories = dict()
     self.active_categories = dict()
@@ -102,6 +115,24 @@ class FeatureCtrl(object):
   def is_feature(self, name):
     return name in self.features
 
+  def get_topological_order(self, request):
+    subgraph = self.dep_graph.subgraph(request)
+    return list(nx.topological_sort(subgraph))
+
+  def get_reversed_topological_order(self, request):
+    subgraph = self.dep_graph.subgraph(request).reverse()
+    return list(nx.topological_sort(subgraph))
+
+  def get_name_errors(self, names):
+    """
+    Yield names that are not categories nor features.
+
+    :param names: `list` of names to check
+    """
+    for name in names:
+      if not self.is_category(name) and not self.is_feature(name):
+        yield name
+
   def get_features_dependency_closure(self, features):
     """
     Return iterative dependency closure of the `features` list. Note, since
@@ -122,34 +153,31 @@ class FeatureCtrl(object):
 
     return closure
 
-  def flatten_with_defaults(self, features):
+  def flatten_with_defaults(self, request):
     """
-    If `features` is a `string` equal to `default` collect all default features
-    of all categories. If it is a `list` containing category name, replace
-    those with default features of that category. Features names are preserved.
+    Replace every category name in `request` `list` with this category's
+    default feature list
 
-    :param features: `list` of feature(category) names or `string` default
+    :param request: `list` of feature(category) names or `string` default
     """
     result = list()
 
-    if features == 'default':
-      result.extend(sum([d.defaults for d in self.categories.values()], []))
-
-    elif features:
-      for name in features:
-        if self.is_category(name):
-          result.extend(self.categories[name].defaults)
-        elif self.is_feature(name):
-          result.append(name)
+    for name in request:
+      if self.is_category(name):
+        result.extend(self.categories[name].defaults)
+      elif self.is_feature(name):
+        result.append(name)
 
     return set(result)
 
   def flatten_with_active(self, request):
+    """
+    Replace every category name in `request` `list` with this category's
+    active feature list
+
+    :param request: `list` of feature(category) names or `string` default
+    """
     result = list()
-
-    if request == 'all':
-      request = self.categories.keys()
-
     for name in request:
       if self.is_category(name):
         cat_inst = self.active_categories.get(name)
@@ -179,14 +207,18 @@ class FeatureCtrl(object):
     for name in order:
       if self.is_category(name):
         cat_desc = self.categories[name]
-        if not (set(order) & set(cat_desc.features)):
-          cat_inst = self.active_categories.get(name, None)
-          if not cat_inst:
-            result.extend(cat_desc.defaults)
+        present = set(order) & set(cat_desc.features)
+        # We eagerly add every dependency, later we will remove duplicates
+        if present:
+          total_order, _ = self.get_activation_order(present)
+          result.extend(total_order)
+        elif name not in self.active_categories.keys():
+          total_order, _ = self.get_activation_order(cat_desc.defaults)
+          result.extend(total_order)
       else:
         result.append(name)
 
-    return result
+    return list(unique_everseen(result))
 
   def clean_up_deactivation_order(self, order):
     """
@@ -200,34 +232,62 @@ class FeatureCtrl(object):
 
     for name in order:
       if self.is_category(name):
-        cat_desc = self.categories[name]
         cat_inst = self.active_categories.get(name, None)
         if cat_inst:
-          result.extend(set(cat_inst.get_active_feature_names()) - set(order))
+          # We eagerly add every dependency of the defaults, later we will
+          # remove duplicates
+          total_order, _ = self.get_deactivation_order(
+              set(cat_inst.get_active_feature_names()) - set(order))
+          result.extend(total_order)
       else:
         result.append(name)
 
-    return result
+    return list(unique_everseen(result))
 
-  def get_activation_order(self, features):
+  def get_activation_order(self, request):
     """
-    Derive feature instantiation order from the dependency graph.
+    Derive feature activation order from the dependency graph.
 
-    :param features: `iterable` of feature names
+    :param request: `iterable` of feature and categories names
     :returns: total activation order.
     """
-    flatten = self.flatten_with_defaults(features)
+
+    if request == 'default':
+      request = sum([d.defaults for d in self.categories.values()], [])
+
+    errors = list(self.get_name_errors(request))
+    if errors:
+      raise StopException(
+          StopException.EFTR,
+          "Names '{}' are not features nor categories".format(errors))
+
+    flatten = self.flatten_with_defaults(request)
     closure = self.get_features_dependency_closure(flatten)
 
-    subgraph = self.dep_graph.subgraph(closure)
-    total_order = list(nx.topological_sort(subgraph))
+    total_order = self.get_topological_order(closure)
     total_order = self.clean_up_activation_order(total_order)
     flatten_order = [f for f in total_order if f in flatten]
 
     return total_order, flatten_order
 
-  def get_deactivation_order(self, features):
-    flatten = self.flatten_with_active(features)
+  def get_deactivation_order(self, request):
+    """
+    Derive feature deactivation order from the dependency graph.
+
+    :param request: `iterable` of feature and categories names
+    :returns: total deactivation order.
+    """
+
+    if request == 'all':
+      request = self.categories.keys()
+
+    errors = list(self.get_name_errors(request))
+    if errors:
+      raise StopException(
+          StopException.EFTR,
+          "Names '{}' are not features nor categories", format(errors))
+
+    flatten = self.flatten_with_active(request)
 
     closure = set(flatten)
     while True:
@@ -236,8 +296,7 @@ class FeatureCtrl(object):
         break
       closure = new
 
-    subgraph = self.dep_graph.subgraph(closure).reverse()
-    total_order = list(nx.topological_sort(subgraph))
+    total_order = self.get_reversed_topological_order(closure)
     total_order = self.clean_up_deactivation_order(total_order)
     flatten_order = [f for f in total_order if f in flatten]
 
@@ -270,15 +329,20 @@ class FeatureCtrl(object):
 
     for ftr_name in features:
       cat_name = self.feature_to_category[ftr_name]
+      cat_desc = self.categories[cat_name]
       cat_inst = self.active_categories.get(cat_name, None)
 
-      if cat_inst and not cat_inst.is_active_feature(ftr_name):
+      if cat_inst and cat_desc.singular:
         yield cat_name, ftr_name
 
   def activate_features(self, request, set_up=False):
-    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_CREATION)
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_CREATION, request)
 
     total_order, flatten_order = self.get_activation_order(request)
+
+    print 'request: {}'.format(request)
+    print 'total: {}'.format(total_order)
+    print 'flatten: {}'.format(flatten_order)
 
     # Check for conflicts within flatten(user requested) order
     conflicts = list()
@@ -298,7 +362,8 @@ class FeatureCtrl(object):
       # conflict, since in this case user requested any feature(default or
       # already enabled) of that category
       if category in request:
-        continue
+        conflicts.append(
+            "Category '{}' is already active".format(category))
 
       # Inability to instantiate an explicit request is an error
       if feature in request:
@@ -311,6 +376,8 @@ class FeatureCtrl(object):
       raise StopException(
           StopException.EPERM,
           'There were some conflicting dependencies:\n' + '\n'.join(conflicts))
+
+    self.features_in_activation_process = list(total_order)
 
     # Finally instantiate, activate and set up if needed all the features
     for ftr_name in total_order:
@@ -337,7 +404,9 @@ class FeatureCtrl(object):
       if not cat_inst.is_active_feature(ftr_name):
         cat_inst.activate_feature(ftr_name, set_up=set_up)
 
-    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DESTRUCTION)
+    self.features_in_activation_process = None
+
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_CREATION, total_order)
 
     return total_order, flatten_order
 
@@ -359,7 +428,7 @@ class FeatureCtrl(object):
             yield ftr_name, ftr_dep
 
   def deactivate_features(self, request, tear_down=False):
-    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DESTRUCTION)
+    self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DESTRUCTION, request)
 
     total_order, flatten_order = self.get_deactivation_order(request)
 
@@ -377,7 +446,6 @@ class FeatureCtrl(object):
 
     for ftr_name in total_order:
       cat_name = self.feature_to_category[ftr_name]
-      cat_desc = self.categories[cat_name]
       cat_inst = self.active_categories.get(cat_name, None)
 
       if cat_inst and cat_inst.is_active_feature(ftr_name):
@@ -391,13 +459,33 @@ class FeatureCtrl(object):
         self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_DEACTIVATE, cat_name)
 
         if tear_down:
-          self.renv.lifecycle.mark_before(Lifecycle.CATEGORY_TEAR_DOWN, cat_name)
+          self.renv.lifecycle.mark_before(
+              Lifecycle.CATEGORY_TEAR_DOWN, cat_name)
           cat_inst.tear_down()
           self.renv.lifecycle.mark_after(Lifecycle.CATEGORY_TEAR_DOWN, cat_name)
 
         del self.categories[cat_name]
 
-    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DESTRUCTION)
+    self.renv.lifecycle.mark_after(Lifecycle.FEATURE_DESTRUCTION, total_order)
+
+    return total_order, flatten_order
+
+  def check_dependency(self, ftr_name, dep_name):
+    cat_name = self.feature_to_category[ftr_name]
+
+    if self.is_category(dep_name) and dep_name == cat_name:
+      raise StopException(
+          StopException.EPERM,
+          "It is forbidden to have self-dependency. Check category '{}'".
+          format(dep_name))
+
+    # elif self.is_feature(dep_name):
+    #   dep_cat_name = self.feature_to_category[dep_name]
+    #   if dep_cat_name == cat_name:
+    #     raise StopException(
+    #         StopException.EPERM,
+    #         str("It is forbidden to have dependencies within one category." +
+    #             " Check features '{}'").format((ftr_name, dep_name)))
 
 #-API---------------------------------------------------------------------------
 
@@ -423,15 +511,17 @@ class FeatureCtrl(object):
 
     # Add all category requirements
     cat_desc = self.categories[cat_name]
-    for requirement in cat_desc.requires:
-      if not self.dep_graph.has_edge(requirement, ftr_name):
-        self.dep_graph.add_edge(requirement, ftr_name)
+    for dep_name in cat_desc.requires:
+      self.check_dependency(ftr_name, dep_name)
+      if not self.dep_graph.has_edge(dep_name, ftr_name):
+        self.dep_graph.add_edge(dep_name, ftr_name)
 
     # Add feature's own requirements
     ftr_desc = FeatureDesc(ftr_name, feature_class, requires)
-    for requirement in ftr_desc.requires:
-      if not self.dep_graph.has_edge(requirement, ftr_name):
-        self.dep_graph.add_edge(requirement, ftr_name)
+    for dep_name in ftr_desc.requires:
+      self.check_dependency(ftr_name, dep_name)
+      if not self.dep_graph.has_edge(dep_name, ftr_name):
+        self.dep_graph.add_edge(dep_name, ftr_name)
 
     if not nx.is_directed_acyclic_graph(self.dep_graph):
       raise Exception(

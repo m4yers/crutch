@@ -40,7 +40,8 @@ class RunnerCpp(Runner):
         'build',
         FeatureCategoryCppBuild,
         features=['make', 'xcode'],
-        defaults=['make'])
+        defaults=['make'],
+        requires=['jinja'])
     self.register_feature_class('make', FeatureCppBuildMake)
     self.register_feature_class('xcode', FeatureCppBuildXcode)
 

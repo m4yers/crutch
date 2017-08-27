@@ -1,3 +1,4 @@
 jinja2
 networkx
 prompt_toolkit
+more_itertools
