@@ -152,12 +152,10 @@ class FeatureFeature(Feature):
 
     _, flatten_order = self.renv.feature_ctrl.get_deactivation_order(names)
     if not flatten_order:
-      print("There is nothing to remove")
-      raise StopException()
+      raise StopException("There is nothing to remove")
 
     if not prompter.yesno("Do you really want to remove {}".format(names)):
-      print("Nothing was removed")
-      raise StopException()
+      raise StopException("Nothing was removed")
 
     self.renv.feature_ctrl.deactivate_features(
         names,

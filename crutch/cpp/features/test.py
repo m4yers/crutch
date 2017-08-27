@@ -24,8 +24,9 @@ import subprocess
 import shutil
 import os
 
-from crutch.core.exceptions import StopException
+import prompter
 
+from crutch.core.exceptions import StopException
 from crutch.core.features.basics import create_simple_feature_category
 from crutch.core.features.basics import Feature, FeatureMenu
 
@@ -222,6 +223,9 @@ class FeatureCppTest(Feature):
           StopException.EFS,
           "'{}' does not exist".format(test.name))
 
+    if not prompter.yesno("Do you really want remove this test?"):
+      raise StopException("Nothing was removed")
+
     # Remove test folder
     shutil.rmtree(
         os.path.join(
@@ -235,6 +239,8 @@ class FeatureCppTest(Feature):
       if len(os.listdir(fullpath)) == 1:
         shutil.rmtree(fullpath)
       path.pop()
+
+    print("Test '{}' was removed".format(test.name))
 
 
 class FeatureCppTestGTest(FeatureCppTest):
