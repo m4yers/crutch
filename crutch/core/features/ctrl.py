@@ -340,10 +340,6 @@ class FeatureCtrl(object):
 
     total_order, flatten_order = self.get_activation_order(request)
 
-    print 'request: {}'.format(request)
-    print 'total: {}'.format(total_order)
-    print 'flatten: {}'.format(flatten_order)
-
     # Check for conflicts within flatten(user requested) order
     conflicts = list()
     for category, features in self.get_singularity_conflicts(flatten_order):
