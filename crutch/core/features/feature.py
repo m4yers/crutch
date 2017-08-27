@@ -20,6 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+
+import prompter
+
+from crutch.core.exceptions import StopException
 from crutch.core.features.basics import Feature, FeatureMenu
 
 
@@ -147,6 +151,14 @@ class FeatureFeature(Feature):
     names = self.renv.get_prop(OPT_FEATURES)
 
     _, flatten_order = self.renv.feature_ctrl.get_deactivation_order(names)
+    if not flatten_order:
+      print("There is nothing to remove")
+      raise StopException()
+
+    if not prompter.yesno("Do you really want to remove {}".format(names)):
+      print("Nothing was removed")
+      raise StopException()
+
     self.renv.feature_ctrl.deactivate_features(
         names,
         tear_down=True,
@@ -156,3 +168,5 @@ class FeatureFeature(Feature):
         'project_features',
         list(set(project_features) - set(flatten_order)),
         mirror_to_config=True)
+
+    print("Removed {}".format(flatten_order))

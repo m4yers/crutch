@@ -428,10 +428,6 @@ class FeatureCtrl(object):
 
     total_order, flatten_order = self.get_deactivation_order(request)
 
-    print 'request: {}'.format(request)
-    print 'total: {}'.format(total_order)
-    print 'flatten: {}'.format(flatten_order)
-
     # Before we remove anything we verify if we can do that without breaking
     # any dependencies
     conflicts = list()

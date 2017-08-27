@@ -112,7 +112,7 @@ class FeatureCppTest(Feature):
     for config in CONFIG_CHOICES:
       bin_dir = self.build_ftr.get_build_directory(config)
       if os.path.exists(bin_dir):
-        shutil.rmtree(bid_dir)
+        shutil.rmtree(bin_dir)
 
 #-SUPPORT-----------------------------------------------------------------------
 

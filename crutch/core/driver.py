@@ -211,7 +211,7 @@ class Driver(object):
 
     try:
       renv = self.create_runtime_environment()
-      renv.lifecycle.enable_tracing()
+      # renv.lifecycle.enable_tracing()
       renv.lifecycle.mark(Lifecycle.CRUTCH_START)
 
       argv = self.argv[1:]
