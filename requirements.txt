@@ -1,5 +1,6 @@
 jinja2
 networkx
+pygments
 prompter
 prompt_toolkit
 more_itertools
