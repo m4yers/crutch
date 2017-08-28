@@ -313,10 +313,10 @@ class FeatureCtrl(object):
 
     return total_order, flatten_order
 
-  def get_singularity_conflicts(self, features):
+  def get_mono_conflicts(self, features):
     """
     Return category/feature conflicts if any, where more than one feature
-    belongs to the same singlular category.
+    belongs to the same mono category.
 
     :param features: `list` of feature names.
     :returns: True if there are no conflicts.
@@ -357,9 +357,9 @@ class FeatureCtrl(object):
 
     # Check for conflicts within flatten(user requested) order
     conflicts = list()
-    for category, features in self.get_singularity_conflicts(flatten_order):
+    for category, features in self.get_mono_conflicts(flatten_order):
       conflicts.append(
-          str("Singular category '{}' cannot have all of '{}' features " +
+          str("Mono category '{}' cannot have all of '{}' features " +
               "activated at the same time").format(category, features))
     if conflicts:
       raise StopException(
