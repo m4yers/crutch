@@ -86,7 +86,7 @@ class FeatureCtrl(object):
 
   def __init__(self, renv):
     self.renv = renv
-    self.dep_graph = nx.DiGraph()
+    self.dep_graph = nx.DiGraph() # it is more like a forest of trees
     self.features = dict()
     self.feature_to_category = dict()
     self.features_in_activation_process = None
@@ -509,7 +509,8 @@ class FeatureCtrl(object):
       self, cat_name, cat_class=FeatureCategory, features=None, defaults=None, \
       requires=None, mono=True):
     """
-    Register feature category
+    Register feature category. Every name mentioned in its configuration must
+    be previously registered to prevent potential circular dependencies.
 
     :param cat_name: unique category name
     :param cat_class: category's constructor
@@ -523,18 +524,24 @@ class FeatureCtrl(object):
     :param mono: If `True` this category can have only one active feature at a
       time, otherwise it can have many.
     """
-    self.categories[cat_name] = CategoryDesc(
-        cat_name, cat_class, features, defaults, requires, mono)
-
     if not features:
       raise StopException(
           StopException.EFTR,
           "You need to define features list for '{}'".format(cat_name))
 
+    self.categories[cat_name] = CategoryDesc(
+        cat_name, cat_class, features, defaults, requires, mono)
+
     self.dep_graph.add_node(cat_name)
 
     for ftr_name in features:
       self.assert_dependency(cat_name, ftr_name)
+
+      if self.feature_to_category[ftr_name] != self.sink_category_name:
+        raise StopException(
+            StopException.EPERM,
+            "A feature '{}' cannot be attached to multiple categoires"
+            .format(ftr_name))
 
       if requires:
         for dep_name in requires:
@@ -548,7 +555,11 @@ class FeatureCtrl(object):
 
   def register_feature_class(self, ftr_name, ftr_class, requires=None):
     """
-    Register feature
+    Register feature. Every name mentioned in its configuration must be
+    previously registered to prevent potential circular dependencies. Each
+    registered feature is added to a default `sink` category, once you've
+    used this feature's name while defining a category it will be attached
+    to this category.
 
     :param ftr_name: unique feature name
     :param ftr_class: feature's constructor

@@ -83,8 +83,24 @@ class FeatureCtrlTestCircularDependencies(unittest.TestCase):
     renv = create_runtime(RunnerBlah)
     renv.create_runner('runner')
 
+  @unittest.expectedFailure
+  def test_feature_reattaching(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature, requires=['alpha'])
+        self.register_feature_category_class(
+            'alpha',
+            FeatureCategory, features=['bravo'])
+        self.register_feature_category_class(
+            'echo',
+            FeatureCategory, features=['bravo'])
 
-class FeatureCtrlTestSingularity(unittest.TestCase):
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+
+class FeatureCtrlTestMono(unittest.TestCase):
 
   def setUp(self):
     class RunnerBlah(Runner):
@@ -112,7 +128,7 @@ class FeatureCtrlTestSingularity(unittest.TestCase):
     self.ctrl = self.renv.feature_ctrl
 
   @unittest.expectedFailure
-  def test_fail_on_many_featuers_of_singular_category(self):
+  def test_fail_on_many_featuers_of_mono_category(self):
     self.ctrl.activate_features(['bravo', 'charlie', 'delta'])
 
   def test_no_fail_on_many_ftrs_multi_category(self):
