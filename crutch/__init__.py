@@ -27,18 +27,9 @@ import os
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 from crutch.core.driver import Driver
-from crutch.core.runner import Runner
+from crutch.core.runner import Runner, Runners
 
 from crutch.cpp.runner import RunnerCpp
-
-class Runners(object):
-
-  def __init__(self, runners):
-    self.runners = runners
-
-  def get(self, kind):
-    return self.runners.get(kind, Runner)
-
 
 def main():
   Driver(Runners({'new': Runner, 'cpp': RunnerCpp})).run()
