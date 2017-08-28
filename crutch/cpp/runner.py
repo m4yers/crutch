@@ -20,7 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from crutch.core.runner import Runner
+from crutch.core.runner import RunnerDefault
 
 from crutch.cpp.features.build import FeatureCategoryCppBuild
 from crutch.cpp.features.build import FeatureCppBuildMake, FeatureCppBuildXcode
@@ -31,7 +31,7 @@ from crutch.cpp.features.file import FeatureCppFileManager
 from crutch.cpp.features.test import FeatureCategoryCppTest
 from crutch.cpp.features.test import FeatureCppTestGTest
 
-class RunnerCpp(Runner):
+class RunnerCpp(RunnerDefault):
 
   def __init__(self, renv):
     super(RunnerCpp, self).__init__(renv)

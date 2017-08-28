@@ -28,9 +28,9 @@ sys.path.insert(
     0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 from crutch.core.driver import Driver
-from crutch.core.runner import Runner, Runners
+from crutch.core.runner import RunnerDefault, Runners
 
 from crutch.cpp.runner import RunnerCpp
 
 def main():
-  Driver(Runners({'new': Runner, 'cpp': RunnerCpp})).run()
+  Driver(Runners({'new': RunnerDefault, 'cpp': RunnerCpp})).run()

@@ -42,15 +42,6 @@ class Runner(object):
     self.renv = renv
     self.default_run_feature = None
 
-    self.register_feature_category_class(
-        'crutch',
-        features=['jinja', 'feature', 'new'],
-        defaults=['feature'],
-        singular=False)
-    self.register_feature_class('jinja', FeatureJinja)
-    self.register_feature_class('feature', FeatureFeature)
-    self.register_feature_class('new', FeatureNew, requires=['jinja'])
-
   def register_default_run_feature(self, name):
     self.default_run_feature = name
 
@@ -75,3 +66,17 @@ class Runner(object):
     renv.lifecycle.mark_before(Lifecycle.RUNNER_RUN, run_feature)
     self.invoke_feature(run_feature)
     renv.lifecycle.mark_after(Lifecycle.RUNNER_RUN, run_feature)
+
+class RunnerDefault(Runner):
+
+  def __init__(self, renv):
+    super(RunnerDefault, self).__init__(renv)
+
+    self.register_feature_category_class(
+        'crutch',
+        features=['jinja', 'feature', 'new'],
+        defaults=['feature'],
+        singular=False)
+    self.register_feature_class('jinja', FeatureJinja)
+    self.register_feature_class('feature', FeatureFeature)
+    self.register_feature_class('new', FeatureNew, requires=['jinja'])
