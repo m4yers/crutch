@@ -79,4 +79,4 @@ class RunnerDefault(Runner):
         'crutch',
         features=['jinja', 'feature', 'new'],
         defaults=['feature'],
-        singular=False)
+        mono=False)

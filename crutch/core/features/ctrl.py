@@ -39,13 +39,13 @@ SINK_CATEGORY = 'sink_category_{}'.format(uuid.uuid1())
 
 class CategoryDesc(object):
 
-  def __init__(self, name, init, features, defaults, requires, singular):
+  def __init__(self, name, init, features, defaults, requires, mono):
     self.name = name
     self.init = init
     self.features = features or list()
     self.defaults = defaults or list()
     self.requires = requires or list()
-    self.singular = singular
+    self.mono = mono
 
 
 class FeatureDesc(object):
@@ -323,7 +323,7 @@ class FeatureCtrl(object):
     """
 
     for cat_desc in self.categories.values():
-      if cat_desc.singular:
+      if cat_desc.mono:
         intersection = set(cat_desc.features) & set(features)
         if len(intersection) > 1:
           yield cat_desc.name, intersection
@@ -331,7 +331,7 @@ class FeatureCtrl(object):
   def get_activation_conflicts(self, features):
     """
     Verify whether the `features` does not contain conflicting features, that
-    is features of a singular category that is active and has other active
+    is features of a mono category that is active and has other active
     features.
 
     :param features: `list` of feature names.
@@ -343,7 +343,7 @@ class FeatureCtrl(object):
       cat_desc = self.categories[cat_name]
       cat_inst = self.active_categories.get(cat_name, None)
 
-      if cat_inst and cat_desc.singular:
+      if cat_inst and cat_desc.mono:
         yield cat_name, ftr_name
 
   def activate_features(self, request, set_up=False):
@@ -380,7 +380,7 @@ class FeatureCtrl(object):
       if feature in request:
         conflicts.append(
             str("Cannot activate '{}' feature because its category '{}' is " +
-                "singular and already contains active features").
+                "mono and already contains active features").
             format(feature, category))
 
     if conflicts:
@@ -507,23 +507,24 @@ class FeatureCtrl(object):
 
   def register_feature_category_class(
       self, cat_name, cat_class=FeatureCategory, features=None, defaults=None, \
-      requires=None, singular=True):
+      requires=None, mono=True):
     """
     Register feature category
 
     :param cat_name: unique category name
     :param cat_class: category's constructor
     :param features: `list` of feature names this category contains. Feature
-      must be previous registered
+      must be previous registered. These feature names must be previously
+      registered.
     :param defaults: `list` of default features this category provides if its
       name mentioned as a dependency if none of its features is already active.
     :param requires: `list` of features and/or categories this category depends
-      upon.
-    :param singular: If `True` this category can have only one active feature
-      at a time, otherwise it can have many.
+      upon. These names must be previously registered.
+    :param mono: If `True` this category can have only one active feature at a
+      time, otherwise it can have many.
     """
     self.categories[cat_name] = CategoryDesc(
-        cat_name, cat_class, features, defaults, requires, singular)
+        cat_name, cat_class, features, defaults, requires, mono)
 
     if not features:
       raise StopException(
@@ -552,7 +553,7 @@ class FeatureCtrl(object):
     :param ftr_name: unique feature name
     :param ftr_class: feature's constructor
     :param requires: `list` of features and/or categories this feature depends
-      upon.
+      upon. These names must be previously registered.
     """
     ftr_desc = FeatureDesc(ftr_name, ftr_class, requires)
 

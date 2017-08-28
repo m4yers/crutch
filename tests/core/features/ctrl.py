@@ -97,7 +97,7 @@ class FeatureCtrlTestSingularity(unittest.TestCase):
             'alpha',
             FeatureCategory,
             features=['bravo', 'charlie', 'delta'],
-            singular=True)
+            mono=True)
         self.register_feature_class('foxtrot', Feature)
         self.register_feature_class('golf', Feature)
         self.register_feature_class('hotel', Feature)
@@ -105,7 +105,7 @@ class FeatureCtrlTestSingularity(unittest.TestCase):
             'echo',
             FeatureCategory,
             features=['foxtrot', 'golf', 'hotel'],
-            singular=False)
+            mono=False)
 
     self.renv = create_runtime(RunnerBlah)
     self.renv.create_runner('runner')
@@ -133,7 +133,7 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
             FeatureCategory,
             features=['bravo', 'charlie', 'delta'],
             defaults=['bravo', 'charlie', 'delta'],
-            singular=False)
+            mono=False)
         self.register_feature_class('foxtrot', Feature)
         self.register_feature_class('golf', Feature)
         self.register_feature_class('hotel', Feature)
@@ -142,7 +142,7 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
             FeatureCategory,
             features=['foxtrot', 'golf', 'hotel'],
             defaults=['foxtrot', 'golf', 'hotel'],
-            singular=False)
+            mono=False)
 
     renv = create_runtime(RunnerBlah)
     renv.create_runner('runner')
@@ -165,7 +165,7 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
             FeatureCategory,
             features=['bravo', 'charlie', 'delta'],
             defaults=['bravo', 'charlie'],
-            singular=False)
+            mono=False)
 
     renv = create_runtime(RunnerBlah)
     renv.create_runner('runner')
@@ -187,7 +187,7 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
             'alpha',
             FeatureCategory,
             features=['bravo', 'charlie', 'delta'],
-            singular=False)
+            mono=False)
 
     renv = create_runtime(RunnerBlah)
     renv.create_runner('runner')
