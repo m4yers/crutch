@@ -20,6 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import logging
 import os
 
 import networkx as nx
@@ -31,6 +32,8 @@ import crutch.core.lifecycle as Lifecycle
 from crutch.core.exceptions import StopException
 from crutch.core.features.basics import FeatureCategory
 from crutch.core.replacements import GenerativeReplacementsProvider
+
+logger = logging.getLogger(__name__)
 
 class CategoryDesc(object):
 
@@ -348,6 +351,10 @@ class FeatureCtrl(object):
 
     total_order, flatten_order = self.get_activation_order(request)
 
+    logger.info("Request: '%s'", request)
+    logger.info("Total order: '%s'", total_order)
+    logger.info("Flatten order: '%s'", flatten_order)
+
     # Check for conflicts within flatten(user requested) order
     conflicts = list()
     for category, features in self.get_singularity_conflicts(flatten_order):
@@ -531,8 +538,8 @@ class FeatureCtrl(object):
 
     if not nx.is_directed_acyclic_graph(self.dep_graph):
       raise Exception(
-          'Features you have provided form a circular dependency:\n' +
-          list(nx.find_cycle(self.dep_graph, orientation='ignore')))
+          'Features you have provided form a circular dependency:\n {}'.
+          format(list(nx.find_cycle(self.dep_graph))))
 
     self.features[ftr_name] = ftr_desc
 

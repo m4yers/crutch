@@ -23,8 +23,11 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
+import logging
+
 from crutch.core.properties import Properties
-from crutch.core.replacements import Replacements, GenerativeReplacementsProvider
+from crutch.core.replacements import GenerativeReplacementsProvider
+from crutch.core.replacements import Replacements
 from crutch.core.features.ctrl import FeatureCtrl
 
 from crutch.core.exceptions import StopException
@@ -64,8 +67,18 @@ class RuntimeEnvironment(object):
     self.repl = Replacements()
     self.feature_ctrl = FeatureCtrl(self)
     self.lifecycle = Lifecycle.Lifecycle()
-    self.prop_to_repl_mirror = self.repl.add_provider('prop-to-repl-mirror', dict())
+    self.prop_to_repl_mirror = self.repl.add_provider(
+        'prop-to-repl-mirror', dict())
     self.repl.add_provider('runtime-env-repl', RuntimeEnvReplProvider(self))
+
+    # Init root logger
+    logger = logging.getLogger()
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
   @staticmethod
   def get_default():
@@ -125,7 +138,8 @@ class RuntimeEnvironment(object):
     if mirror_to_repl:
       self.mirror_props_to_repl([name])
 
-  def set_prop_if_not_in(self, name, value, mirror_to_config=False, mirror_to_repl=False):
+  def set_prop_if_not_in(self, name, value, \
+      mirror_to_config=False, mirror_to_repl=False):
     if name not in self.props:
       self.set_prop(name, value, mirror_to_config, mirror_to_repl)
 
