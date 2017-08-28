@@ -27,6 +27,15 @@ from crutch.core.features.feature import FeatureFeature
 from crutch.core.features.new import FeatureNew
 
 
+class Runners(object):
+
+  def __init__(self, runners):
+    self.runners = runners
+
+  def get(self, kind):
+    return self.runners.get(kind, Runner)
+
+
 class Runner(object):
 
   def __init__(self, renv):

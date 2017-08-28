@@ -76,6 +76,9 @@ class RuntimeEnvironment(object):
     assert RuntimeEnvironment.Default is None
     RuntimeEnvironment.Default = self
 
+  def create_runner(self, name):
+    return self.runners.get(name)(self)
+
   def update_properties(self, props):
     self.props.update(props)
 

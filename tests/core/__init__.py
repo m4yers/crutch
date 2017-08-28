@@ -4,8 +4,8 @@ def get_suite():
   loader = unittest.defaultTestLoader
   suite = unittest.TestSuite()
 
-  import tests.core.features as features
-  suite.addTest(loader.loadTestsFromModule(features))
+  import tests.core.features.ctrl as ctrl
+  suite.addTest(loader.loadTestsFromModule(ctrl))
 
   import tests.core.properties as properties
   suite.addTest(loader.loadTestsFromModule(properties))

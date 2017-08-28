@@ -102,7 +102,7 @@ class Driver(object):
     self.renv.config_load()
     self.check_version()
 
-    runner = self.runners.get(self.renv.get_project_type())(self.renv)
+    runner = self.renv.create_runner(self.renv.get_project_type())
     runner.activate_features()
 
     self.renv.menu.parse([runner.default_run_feature])
@@ -112,7 +112,7 @@ class Driver(object):
   def handle_new(self):
     self.renv.set_prop('project_features', ['new'])
 
-    runner = self.runners.get('new')(self.renv)
+    runner = self.renv.create_runner('new')
     runner.activate_features()
 
     self.renv.del_prop('project_features')
@@ -135,7 +135,7 @@ class Driver(object):
     self.renv.config_load()
     self.check_version()
 
-    runner = self.runners.get(self.renv.get_project_type())(self.renv)
+    runner = self.renv.create_runner(self.renv.get_project_type())
     runner.activate_features()
 
     self.renv.menu.parse(self.renv.get_prop('crutch_argv'))
@@ -155,12 +155,12 @@ class Driver(object):
       self.renv.config_load()
       self.check_version()
       self.set_default_props()
-      runner = self.runners.get(self.renv.get_project_type())(self.renv)
+      runner = self.renv.create_runner(self.renv.get_project_type())
       runner.activate_features()
 
     # Otherwise we allow only new to run, and it will update runner upon success
     else:
-      self.runners.get('new')(self.renv).activate_features()
+      self.renv.create_runner('new').activate_features()
 
     print("CRUTCH {}".format(self.get_version()))
     print("Home: https://github.com/m4yers/crutch")
