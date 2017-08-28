@@ -1,3 +1,6 @@
+from __future__ import unicode_literals
+from __future__ import print_function
+
 import unittest
 import shutil
 import tempfile
@@ -84,17 +87,15 @@ class PropertiesRuntimeDataTest(unittest.TestCase):
   """
 
   def setUp(self):
-    self.defaults = dict()
-    self.cli = dict()
-    self.props = Properties(self.defaults, '', self.cli)
+    self.props = Properties()
     self.stage = self.props.stage
 
   def test_read_write(self):
     self.props['some'] = 'value'
 
     # Make sure it did't write throught the stage dict()
-    self.assertNotIn('some', self.defaults)
-    self.assertNotIn('some', self.cli)
+    self.assertNotIn('some', self.props.defaults)
+    self.assertNotIn('some', self.props.cli)
 
     # The values is actually set and can be read
     self.assertDictContainsSubset({'some': 'value'}, self.stage)
@@ -119,9 +120,8 @@ class PropertiesConfigDataTest(unittest.TestCase):
     self.dir = tempfile.mkdtemp()
     self.config = os.path.join(self.dir, 'config.json')
 
-    self.defaults = dict()
-    self.cli = dict()
-    self.props = Properties(self.defaults, self.config, self.cli)
+    self.props = Properties()
+    self.props.update_config(self.config)
     self.stage = self.props.stage
 
   def tearDown(self):
@@ -140,24 +140,18 @@ class PropertiesConfigDataTest(unittest.TestCase):
     self.assertDictContainsSubset(DATA, self.props)
 
   @unittest.expectedFailure
-  def test_fail_config_push(self):
-    Properties(self.defaults, '', self.cli).config_push()
-
-  @unittest.expectedFailure
-  def test_fail_config_delete(self):
-    Properties(self.defaults, '', self.cli).config_delete('blah')
-
-  @unittest.expectedFailure
-  def test_fail_config_update(self):
-    Properties(self.defaults, '', self.cli).config_update('blah', 'blah')
-
-  @unittest.expectedFailure
   def test_fail_config_load(self):
-    Properties(self.defaults, '', self.cli).config_load()
+    self.props.update_config('')
+    Properties().config_load()
 
   @unittest.expectedFailure
   def test_fail_config_flush(self):
-    Properties(self.defaults, '', self.cli).config_flush()
+    self.props.update_config('')
+    Properties().config_flush()
+
+  @unittest.expectedFailure
+  def test_fail_config_delete(self):
+    Properties().config_delete('blah')
 
   def test_config_flush(self):
     for key, value in DATA.items():
@@ -171,7 +165,8 @@ class PropertiesConfigDataTest(unittest.TestCase):
     self.props.config_flush()
 
     # Verify written DATA
-    reader = Properties(dict(), self.config, dict())
+    reader = Properties()
+    reader.update_config(self.config)
     reader.config_load()
 
     self.assertDictContainsSubset(DATA, reader.config)

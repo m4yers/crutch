@@ -93,11 +93,13 @@ class FlatJSONConfig(UserDict.DictMixin):
     return self.get_flat_keys(self.data, list())
 
   def load(self):
+    assert self.filename
     if os.path.exists(self.filename):
       with codecs.open(self.filename, 'rU', 'utf-8') as fin:
         self.data = json.load(fin)
 
   def flush(self):
+    assert self.filename
     with codecs.open(self.filename, 'wU', 'utf-8') as fout:
       json.dump(self.data, fout)
 
@@ -152,26 +154,21 @@ class Properties(UserDict.DictMixin):
     return list(set(result))
 
   def config_push(self, selected=None):
-    assert isinstance(self.config, FlatJSONConfig)
     properties = selected or self.keys()
     for prop in properties:
       if prop in self.stage:
         self.config[prop] = self.stage[prop]
 
   def config_update(self, key, value):
-    assert isinstance(self.config, FlatJSONConfig)
     self.config[key] = value
 
   def config_delete(self, key):
-    assert isinstance(self.config, FlatJSONConfig)
     del self.config[key]
 
   def config_load(self):
-    assert isinstance(self.config, FlatJSONConfig)
     self.config.load()
 
   def config_flush(self):
-    assert isinstance(self.config, FlatJSONConfig)
     self.config.flush()
 
   def get_print_info(self):

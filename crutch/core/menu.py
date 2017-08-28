@@ -117,11 +117,12 @@ class Menu(object):
     try:
       opts = vars(self.parser.parse_args(argv))
     except SystemExit:
-      raise StopException(StopException.EPAR)
+      raise StopException(StopException.EPAR, "Parsing failed")
 
     # Normalize project_directory
     opts['project_directory'] = os.path.abspath(opts['project_directory'])
     self.renv.update_cli_properties(opts)
+    return opts
 
 
 class MenuActions(object):

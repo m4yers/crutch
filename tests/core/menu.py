@@ -1,22 +1,22 @@
 import unittest
 
+from crutch.core.runtime import RuntimeEnvironment
 from crutch.core.menu import create_crutch_menu
 
 
 class MenuTest(unittest.TestCase):
 
-  def test_feature(self):
-    menu = create_crutch_menu()
-    opts = menu.parse(['new', 'cpp', '-f', 'xcode'])
-    expected = {'feature': 'new', 'project_type': 'cpp', 'project_features': ['xcode']}
-    self.assertDictContainsSubset(expected, vars(opts))
+  def setUp(self):
+    self.renv = RuntimeEnvironment(None)
+    self.renv.menu = create_crutch_menu(self.renv)
 
   def test_feature_action(self):
-    menu = create_crutch_menu()
-
+    menu = self.renv.menu
 
     build = menu.add_feature('build', 'Build project')
-    build.add_argument(
+    actions = build.add_actions()
+    default = actions.add_action('default')
+    default.add_argument(
         '-c', '--config', dest='config', metavar='CONFIG',
         help='Build configuration')
 
@@ -36,13 +36,14 @@ class MenuTest(unittest.TestCase):
 
 
     opts = menu.parse(['build'])
-    expected = {'feature': 'build', 'feature_build_config': None, 'project_directory': '.'}
-    self.assertDictContainsSubset(expected, vars(opts))
+    expected = {'run_feature': 'build', 'action': 'default',\
+                'config': None, 'prompt': None}
+    self.assertDictContainsSubset(expected, opts)
 
     opts = menu.parse(['test', 'add', 'core/test'])
-    expected = {'feature': 'test', 'action': 'add', 'feature_test_add_group': 'core/test'}
-    self.assertDictContainsSubset(expected, vars(opts))
+    expected = {'run_feature': 'test', 'action': 'add', 'group': 'core/test'}
+    self.assertDictContainsSubset(expected, opts)
 
     opts = menu.parse(['file', 'add', 'core/feature'])
-    expected = {'feature': 'file', 'action': 'add', 'feature_file_add_group': 'core/feature'}
-    self.assertDictContainsSubset(expected, vars(opts))
+    expected = {'run_feature': 'file', 'action': 'add', 'group': 'core/feature'}
+    self.assertDictContainsSubset(expected, opts)
