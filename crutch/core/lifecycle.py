@@ -20,6 +20,9 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import logging
+LOGGER = logging.getLogger(__name__)
+
 CRUTCH_START = 'crutch-start'
 CONFIG_LOAD = 'config-load'
 BUILD_DEPENDENCY_GRAPH = 'build-dependency-graph'
@@ -69,7 +72,7 @@ class Lifecycle(object):
 
   def mark(self, phase, order=ORDER_NONE, info=''):
     if self.tracing:
-      print 'LIFECYCLE: {} {} {}'.format(order, phase, info)
+      LOGGER.info('LIFECYCLE: {} {} {}'.format(order, phase, info))
 
     if phase not in self.hooks:
       return
