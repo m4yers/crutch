@@ -57,6 +57,7 @@ class RuntimeEnvironment(object):
   Object of this class holds all necessary utility to get runner run
   """
 
+  root_logger = None
   Default = None
 
   def __init__(self, runners):
@@ -72,13 +73,15 @@ class RuntimeEnvironment(object):
     self.repl.add_provider('runtime-env-repl', RuntimeEnvReplProvider(self))
 
     # Init root logger
-    logger = logging.getLogger()
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
+    if not RuntimeEnvironment.root_logger:
+      logger = logging.getLogger()
+      handler = logging.StreamHandler()
+      formatter = logging.Formatter(
+          '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+      handler.setFormatter(formatter)
+      logger.addHandler(handler)
+      logger.setLevel(logging.DEBUG)
+      RuntimeEnvironment.root_logger = logger
 
   @staticmethod
   def get_default():

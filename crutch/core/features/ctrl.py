@@ -33,7 +33,7 @@ from crutch.core.exceptions import StopException
 from crutch.core.features.basics import FeatureCategory
 from crutch.core.replacements import GenerativeReplacementsProvider
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 class CategoryDesc(object):
 
@@ -86,15 +86,13 @@ class FeatureCtrl(object):
 
   def __init__(self, renv):
     self.renv = renv
-
     self.dep_graph = nx.DiGraph()
+    self.ver_graph = nx.DiGraph()
     self.features = dict()
     self.feature_to_category = dict()
     self.features_in_activation_process = None
-
     self.categories = dict()
     self.active_categories = dict()
-
     renv.repl.add_provider('feature-ctrl-repl', FeatureCtrlReplProvider(renv))
 
   def __repr__(self):
@@ -161,7 +159,7 @@ class FeatureCtrl(object):
     Replace every category name in `request` `list` with this category's
     default feature list
 
-    :param request: `list` of feature(category) names or `string` default
+    :param request: `list` of feature(category) names
     """
     result = list()
 
@@ -178,7 +176,7 @@ class FeatureCtrl(object):
     Replace every category name in `request` `list` with this category's
     active feature list
 
-    :param request: `list` of feature(category) names or `string` default
+    :param request: `list` of feature(category) names
     """
     result = list()
     for name in request:
@@ -351,9 +349,9 @@ class FeatureCtrl(object):
 
     total_order, flatten_order = self.get_activation_order(request)
 
-    logger.info("Request: '%s'", request)
-    logger.info("Total order: '%s'", total_order)
-    logger.info("Flatten order: '%s'", flatten_order)
+    LOGGER.info("Request: '%s'", request)
+    LOGGER.info("Total order: '%s'", total_order)
+    LOGGER.info("Flatten order: '%s'", flatten_order)
 
     # Check for conflicts within flatten(user requested) order
     conflicts = list()
@@ -483,23 +481,6 @@ class FeatureCtrl(object):
 
     return total_order, flatten_order
 
-  def check_dependency(self, ftr_name, dep_name):
-    cat_name = self.feature_to_category[ftr_name]
-
-    if self.is_category(dep_name) and dep_name == cat_name:
-      raise StopException(
-          StopException.EPERM,
-          "It is forbidden to have self-dependency. Check category '{}'".
-          format(dep_name))
-
-    # elif self.is_feature(dep_name):
-    #   dep_cat_name = self.feature_to_category[dep_name]
-    #   if dep_cat_name == cat_name:
-    #     raise StopException(
-    #         StopException.EPERM,
-    #         str("It is forbidden to have dependencies within one category." +
-    #             " Check features '{}'").format((ftr_name, dep_name)))
-
 #-API---------------------------------------------------------------------------
 
   def register_feature_category_class(self, cat_name, \
@@ -509,8 +490,24 @@ class FeatureCtrl(object):
         cat_name, cat_class, features, defaults, requires, singular, always)
     for ftr_name in features:
       self.feature_to_category[ftr_name] = cat_name
+      # Making category depend on its feature in the verification graph allows
+      # us to find implicit feature dependency cycles via their categories, e.g:
+      #
+      #  c:alpha ---+  +-- c:echo
+      #  ---------  |  |   ----------
+      #  f:bravo    +----> f:foxtrot
+      #  f:charlie     |   f:golf
+      #  f:delta <-----+   f:hotel
+      #  
+      # Verification order is:
+      # 
+      # f:delta <-- c:echo <-- f:foxtrot <-- c:alpha <-- f:delta
+      self.ver_graph.add_edge(ftr_name, cat_name)
 
   def register_feature_class(self, ftr_name, feature_class, requires=None):
+    """
+    NOTE: Dependencies can contain categories
+    """
     cat_name = self.feature_to_category.get(ftr_name, None)
     if not cat_name:
       StopException(
@@ -518,28 +515,26 @@ class FeatureCtrl(object):
           "Category for feature '{}' is not defined".format(ftr_name),
           True)
 
-    self.dep_graph.add_node(ftr_name)
-
-    # NOTE: Dependencies can contain categories
-
-    # Add all category requirements
     cat_desc = self.categories[cat_name]
-    for dep_name in cat_desc.requires:
-      self.check_dependency(ftr_name, dep_name)
-      if not self.dep_graph.has_edge(dep_name, ftr_name):
-        self.dep_graph.add_edge(dep_name, ftr_name)
-
-    # Add feature's own requirements
     ftr_desc = FeatureDesc(ftr_name, feature_class, requires)
-    for dep_name in ftr_desc.requires:
-      self.check_dependency(ftr_name, dep_name)
-      if not self.dep_graph.has_edge(dep_name, ftr_name):
-        self.dep_graph.add_edge(dep_name, ftr_name)
 
-    if not nx.is_directed_acyclic_graph(self.dep_graph):
+    # We use separate verification graph to check all possible cycles within
+    # provided dependencies
+    self.ver_graph.add_node(ftr_name)
+    for dep_name in ftr_desc.requires + cat_desc.requires:
+      if not self.ver_graph.has_edge(dep_name, ftr_name):
+        self.ver_graph.add_edge(dep_name, ftr_name)
+
+    if not nx.is_directed_acyclic_graph(self.ver_graph):
       raise Exception(
           'Features you have provided form a circular dependency:\n {}'.
-          format(list(nx.find_cycle(self.dep_graph))))
+          format(list(nx.find_cycle(self.ver_graph))))
+
+    self.dep_graph.add_node(ftr_name)
+    ftr_desc = FeatureDesc(ftr_name, feature_class, requires)
+    for dep_name in ftr_desc.requires + cat_desc.requires:
+      if not self.dep_graph.has_edge(dep_name, ftr_name):
+        self.dep_graph.add_edge(dep_name, ftr_name)
 
     self.features[ftr_name] = ftr_desc
 
