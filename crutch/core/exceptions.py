@@ -34,3 +34,9 @@ class StopException(Exception):
     self.code = code
     self.message = message
     self.terminate = terminate
+
+  def __repr__(self):
+    return 'StopException code: {}, message: {}'.format(self.code, self.message)
+
+  def __str__(self):
+    return self.__repr__()

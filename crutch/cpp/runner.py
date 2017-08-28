@@ -36,29 +36,29 @@ class RunnerCpp(RunnerDefault):
   def __init__(self, renv):
     super(RunnerCpp, self).__init__(renv)
 
+    self.register_feature_class('make', FeatureCppBuildMake)
+    self.register_feature_class('xcode', FeatureCppBuildXcode)
     self.register_feature_category_class(
         'build',
         FeatureCategoryCppBuild,
         features=['make', 'xcode'],
         defaults=['make'],
         requires=['jinja'])
-    self.register_feature_class('make', FeatureCppBuildMake)
-    self.register_feature_class('xcode', FeatureCppBuildXcode)
 
+    self.register_feature_class('file', FeatureCppFileManager)
     self.register_feature_category_class(
         'files',
         FeatureCategoryCppFile,
         features=['file'],
         defaults=['file'],
         requires=['jinja'])
-    self.register_feature_class('file', FeatureCppFileManager)
 
+    self.register_feature_class('gtest', FeatureCppTestGTest)
     self.register_feature_category_class(
         'test',
         FeatureCategoryCppTest,
         features=['gtest'],
         defaults=['gtest'],
         requires=['build', 'jinja'])
-    self.register_feature_class('gtest', FeatureCppTestGTest)
 
     self.register_default_run_feature('build')
