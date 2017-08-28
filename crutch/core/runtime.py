@@ -66,7 +66,6 @@ class RuntimeEnvironment(object):
     self.lifecycle = Lifecycle.Lifecycle()
     self.prop_to_repl_mirror = self.repl.add_provider('prop-to-repl-mirror', dict())
     self.repl.add_provider('runtime-env-repl', RuntimeEnvReplProvider(self))
-    self.set_as_default()
 
   @staticmethod
   def get_default():

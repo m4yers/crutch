@@ -77,6 +77,7 @@ class Driver(object):
 
   def create_runtime_environment(self):
     self.renv = RuntimeEnvironment(self.runners)
+    self.renv.set_as_default() # Required by REPL lexer
     self.renv.menu = create_crutch_menu(self.renv)
     self.renv.prompt = Prompt(self.renv)
     return self.renv
