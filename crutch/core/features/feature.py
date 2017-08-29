@@ -157,14 +157,11 @@ class FeatureFeature(Feature):
     if not prompter.yesno("Do you really want to remove {}".format(names)):
       raise StopException("Nothing was removed")
 
-    self.renv.feature_ctrl.deactivate_features(
+    _, flatten_order = self.renv.feature_ctrl.deactivate_features(
         names,
         tear_down=True,
         skip=set(project_features) - set(flatten_order))
 
-    self.renv.set_prop(
-        'project_features',
-        list(set(project_features) - set(flatten_order)),
-        mirror_to_config=True)
+    self.renv.set_prop('project_features', flatten_order, mirror_to_config=True)
 
     print("Removed {}".format(flatten_order))

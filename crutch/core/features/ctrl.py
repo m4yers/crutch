@@ -271,7 +271,7 @@ class FeatureCtrl(object):
 
     return total_order, flatten_order
 
-  def get_deactivation_order(self, request):
+  def get_deactivation_order(self, request, skip):
     """
     Derive feature deactivation order from the dependency graph.
 
@@ -296,20 +296,25 @@ class FeatureCtrl(object):
         break
       closure = new
 
-    total_order = self.get_reversed_topological_order(closure)
-    total_order = self.clean_up_deactivation_order(total_order)
-    flatten_order = [f for f in total_order if f in flatten]
+    if skip:
+      for name in skip:
+        if name in closure:
+          closure.remove(name)
 
     # Remove implicit dependencies if some other feature that we won't remove
     # depends on it
-    for implicit in [f for f in total_order if f not in flatten_order]:
+    for implicit in [f for f in closure if f not in flatten]:
       for ftr_dep in self.dep_graph.successors(implicit):
-        if ftr_dep not in total_order:
+        if ftr_dep not in closure:
           cat_name = self.feature_to_category[ftr_dep]
           cat_inst = self.active_categories.get(cat_name, None)
           if cat_inst and cat_inst.is_active_feature(ftr_dep):
-            total_order.remove(implicit)
+            closure.remove(implicit)
             break
+
+    total_order = self.get_reversed_topological_order(closure)
+    total_order = self.clean_up_deactivation_order(total_order)
+    flatten_order = [f for f in total_order if f in flatten]
 
     return total_order, flatten_order
 
@@ -438,9 +443,29 @@ class FeatureCtrl(object):
             yield ftr_name, ftr_dep
 
   def deactivate_features(self, request, tear_down=False, skip=None):
+    """
+    Deactivate features and/or categories.
+
+    :param request: `list` of categories and/or features to deactivate; or a
+      `str` equal to `all` which means deactivate all active features and
+      categories.
+    :param tear_down: If `True` every deactivated feature/category will be torn
+      down, meaning it will be completely removed from the project.
+    :param skip: `list` of feature names to skip during deactivation. Since
+      this control has no knowledge of actual project features(it only manages
+      dependencies, explicit and implicit), to remove a feature with its
+      dependencies you want to skip those features that are explicitly enabled
+      by user; otherwise the whole dependency tree will be removed unless some
+      other feature depends on some of its sub-trees.
+    """
     self.renv.lifecycle.mark_before(Lifecycle.FEATURE_DESTRUCTION, request)
 
-    total_order, flatten_order = self.get_deactivation_order(request)
+    total_order, flatten_order = self.get_deactivation_order(request, skip)
+
+    LOGGER.info("Request: '%s'", request)
+    LOGGER.info("Total order: '%s'", total_order)
+    LOGGER.info("Flatten order: '%s'", flatten_order)
+    LOGGER.info("Skip: '%s'", skip)
 
     # Before we remove anything we verify if we can do that without breaking
     # any dependencies
@@ -455,9 +480,6 @@ class FeatureCtrl(object):
           'There were some conflicting dependencies:\n' + '\n'.join(conflicts))
 
     for ftr_name in total_order:
-      if skip and ftr_name in skip:
-        continue
-
       cat_name = self.feature_to_category[ftr_name]
       cat_inst = self.active_categories.get(cat_name, None)
 
@@ -600,6 +622,9 @@ class FeatureCtrl(object):
 
     cat_name = self.feature_to_category[feature]
     self.active_categories[cat_name].handle_feature(feature)
+
+  def get_active_categories_names(self):
+    return self.active_categories.keys()
 
   def get_active_categories(self):
     return self.active_categories.values()
