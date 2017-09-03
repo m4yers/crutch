@@ -38,19 +38,18 @@ class Driver(object):
 
   def __init__(self, runners, argv=None):
     self.runners = runners
-    self.argv = argv or sys.argv
+    self.argv = argv or sys.argv[1:]
     self.renv = None
     self.version = None
 
   def check_crutch_config(self):
     if not os.path.exists(self.renv.get_prop('crutch_config')):
-      raise StopException(
-          StopException.EPERM,
-          'You cannot invoke default CRUTCH action on non-initialized directory')
+      raise StopException(StopException.EPERM, 'CRUTCH config does not exist')
 
   def get_version(self):
     if not self.version:
-      version_file = os.path.join(os.path.dirname(__file__), '..', '..', 'VERSION')
+      version_file = os.path.join(
+          os.path.dirname(__file__), '..', '..', 'VERSION')
       with io.open(version_file) as out:
         self.version = out.read().strip()
     return self.version
@@ -93,8 +92,10 @@ class Driver(object):
 
     project_directory = project_directory or self.renv.get_project_directory()
     self.renv.set_prop('project_directory', project_directory)
-    self.renv.set_prop('crutch_directory', os.path.join(project_directory, '.crutch'))
-    self.renv.set_prop('crutch_config', os.path.join(project_directory, '.crutch.json'))
+    self.renv.set_prop(
+        'crutch_directory', os.path.join(project_directory, '.crutch'))
+    self.renv.set_prop(
+        'crutch_config', os.path.join(project_directory, '.crutch.json'))
 
   def handle_no_args(self):
     self.set_default_props(os.path.abspath('.'))
@@ -123,7 +124,8 @@ class Driver(object):
     if os.path.exists(self.renv.get_crutch_config()):
       raise StopException(
           StopException.EPERM,
-          'You cannot invoke `new` on already existing CRUTCH directory')
+          'You cannot invoke `new` on already existing CRUTCH directory {}'
+          .format(self.renv.get_project_directory()))
 
     return runner
 
@@ -149,8 +151,8 @@ class Driver(object):
 
     runner = None
 
-    # Since prompt syntax highlight depends on active features we need to read the config first
-    # and activate all the features
+    # Since prompt syntax highlight depends on active features we need to read
+    # the config first and activate all the features
     if os.path.exists(crutch_config):
       self.renv.config_load()
       self.check_version()
@@ -214,17 +216,15 @@ class Driver(object):
       renv = self.create_runtime_environment()
       renv.lifecycle.enable_tracing()
       renv.lifecycle.mark(Lifecycle.CRUTCH_START)
-
-      argv = self.argv[1:]
-      renv.set_prop('crutch_argv', argv)
+      renv.set_prop('crutch_argv', self.argv)
 
       runner = None
 
-      if not argv:
+      if not self.argv:
         runner = self.handle_no_args()
-      elif argv[0] == '-p' or argv[0] == '--prompt':
+      elif self.argv[0] == '-p' or self.argv[0] == '--prompt':
         self.handle_prompt()
-      elif argv[0] == 'new':
+      elif self.argv[0] == 'new':
         runner = self.handle_new()
       else:
         runner = self.handle_normal()
@@ -252,4 +252,4 @@ class Driver(object):
     if message:
       print(message)
 
-    sys.exit(code)
+    return code

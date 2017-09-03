@@ -32,5 +32,9 @@ from crutch.core.runner import RunnerDefault, Runners
 
 from crutch.cpp.runner import RunnerCpp
 
+def create_driver(argv=None):
+  return Driver(Runners({'new': RunnerDefault, 'cpp': RunnerCpp}), argv)
+
 def main():
-  Driver(Runners({'new': RunnerDefault, 'cpp': RunnerCpp})).run()
+  code = create_driver(sys.argv[1:]).run()
+  sys.exit(code)

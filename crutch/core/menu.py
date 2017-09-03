@@ -135,6 +135,9 @@ class MenuActions(object):
   def add_action(self, name, desc=''):
     action = MenuAction(name, self.subparser.add_parser(name, help=desc))
     self.actions[name] = action
+    action.add_argument(
+        '-d', '--directory', dest='project_directory', default='.',
+        metavar='DIRECTORY', help='Target directory(default=curwd())')
     return action
 
   def get_names(self):
@@ -158,9 +161,6 @@ class MenuFeature(MenuAction):
 
   def __init__(self, name, parser):
     super(MenuFeature, self).__init__(name, parser)
-    self.parser.add_argument(
-        '-d', '--directory', dest='project_directory', default='.',
-        metavar='DIRECTORY', help='Target directory(default=curwd())')
     self.actions = None
 
   def add_actions(self):
