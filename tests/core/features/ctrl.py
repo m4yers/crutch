@@ -7,6 +7,32 @@ from crutch.core.features.basics import Feature
 def create_runtime(runner):
   return RuntimeEnvironment(Runners({'runner': runner}))
 
+class FeatureCtrlReplProviderTest(unittest.TestCase):
+
+  def test_generate(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_class('charlie', Feature)
+        self.register_feature_category_class(
+            'alpha', features=['bravo', 'charlie'], mono=False)
+        self.register_feature_class('foxtrot', Feature)
+        self.register_feature_category_class('echo', features=['foxtrot'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+    renv.feature_ctrl.activate_features(['bravo', 'charlie', 'foxtrot'])
+
+    # Collect all the replacments
+    renv.repl.fetch()
+
+    self.assertTrue(renv.repl.get('project_feature_category_alpha'))
+    self.assertTrue(renv.repl.get('project_feature_bravo'))
+    self.assertTrue(renv.repl.get('project_feature_charlie'))
+    self.assertTrue(renv.repl.get('project_feature_category_echo'))
+    self.assertTrue(renv.repl.get('project_feature_foxtrot'))
+
 
 class FeatureCtrlTestCircularDependencies(unittest.TestCase):
 
@@ -217,7 +243,7 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
         self.register_feature_class('charlie', Feature, requires=['delta'])
         self.register_feature_class('bravo', Feature, requires=['charlie'])
         self.register_feature_category_class(
-            'alpha', 
+            'alpha',
             defaults=['bravo', 'charlie', 'delta'], features=['bravo'])
         self.register_feature_class('foxtrot', Feature, requires=['alpha'])
         self.register_feature_category_class('echo', features=['foxtrot'])
@@ -240,7 +266,7 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
         self.register_feature_class('charlie', Feature, requires=['delta'])
         self.register_feature_class('bravo', Feature, requires=['charlie'])
         self.register_feature_category_class(
-            'alpha', 
+            'alpha',
             features=['bravo', 'charlie', 'delta'],
             defaults=['bravo', 'charlie', 'delta'])
 
