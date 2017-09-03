@@ -260,7 +260,7 @@ class FeatureCtrl(object):
     if errors:
       raise StopException(
           StopException.EFTR,
-          "Names '{}' are not features nor categories".format(errors))
+          "Names {} are not features nor categories".format(errors))
 
     flatten = self.flatten_with_defaults(request)
     closure = self.get_features_dependency_closure(flatten)

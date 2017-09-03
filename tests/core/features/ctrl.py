@@ -113,6 +113,22 @@ class FeatureCtrlTestCircularDependencies(unittest.TestCase):
     renv.create_runner('runner')
 
 
+class FeatureCtrlTestNames(unittest.TestCase):
+
+  @unittest.expectedFailure
+  def test_unknown_names(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_category_class('alpha', features=['bravo'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+    ctrl = renv.feature_ctrl
+    ctrl.activate_features(['oscar'])
+
+
 class FeatureCtrlTestMono(unittest.TestCase):
 
   def setUp(self):
