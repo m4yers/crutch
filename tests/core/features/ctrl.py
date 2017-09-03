@@ -1,11 +1,20 @@
+import logging
 import unittest
+
+from mock import MagicMock
 
 from crutch.core.runner import Runner, Runners
 from crutch.core.runtime import RuntimeEnvironment
-from crutch.core.features.basics import Feature
+from crutch.core.features.basics import Feature, FeatureCategory
 
 def create_runtime(runner):
   return RuntimeEnvironment(Runners({'runner': runner}))
+
+def create_feature(*args, **kwargs):
+  return MagicMock(Feature, wraps=Feature(*args, **kwargs))
+
+def create_category(*args, **kwargs):
+  return MagicMock(FeatureCategory, wraps=FeatureCategory(*args, **kwargs))
 
 class FeatureCtrlReplProviderTest(unittest.TestCase):
 
@@ -227,7 +236,7 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
 
   def test_category_and_its_feature(self):
     """
-    If features and its category is mentioned in the activation order only the
+    If features and their category is mentioned in the activation order only the
     features stay
     """
     class RunnerBlah(Runner):
@@ -245,6 +254,29 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
 
     total_order, _ = ctrl.get_activation_order(['alpha', 'bravo'])
     self.assertEqual(['bravo'], total_order)
+
+  def test_category_and_its_feature_dep(self):
+    """
+    If features and their category is mentioned in the requires order only the
+    features stay
+    """
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_category_class(
+            'alpha', features=['bravo'], defaults=['bravo'])
+        self.register_feature_class(
+            'foxtrot', Feature, requires=['alpha', 'bravo'])
+        self.register_feature_category_class('echo', features=['foxtrot'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+    ctrl = renv.feature_ctrl
+
+    total_order, _ = ctrl.get_activation_order(['foxtrot'])
+    self.assertEqual(['bravo', 'foxtrot'], total_order)
 
   def test_sibling_feature_dependency(self):
     class RunnerBlah(Runner):
@@ -353,7 +385,7 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
     ctrl.get_activation_order(['alpha'])
 
   @unittest.expectedFailure
-  def test_fail_activate_mono_twice(self):
+  def test_fail_activate_feature_mono_twice(self):
     class RunnerBlah(Runner):
       def __init__(self, renv):
         super(RunnerBlah, self).__init__(renv)
@@ -368,6 +400,22 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
     ctrl = renv.feature_ctrl
     ctrl.activate_features(['bravo'])
     ctrl.activate_features(['charlie'])
+
+  @unittest.expectedFailure
+  def test_fail_activate_category_twice(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_category_class(
+            'alpha', features=['bravo'], defaults=['bravo'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+    ctrl = renv.feature_ctrl
+    ctrl.activate_features(['alpha'])
+    ctrl.activate_features(['alpha'])
 
 
 class FeatureCtrlTestDeactivationOrder(unittest.TestCase):
@@ -405,40 +453,6 @@ class FeatureCtrlTestDeactivationOrder(unittest.TestCase):
 
     self.assertFalse(ctrl.get_active_categories())
     self.assertFalse(ctrl.get_active_features())
-
-  def test_all_deactivates_active_category(self):
-    class RunnerBlah(Runner):
-      def __init__(self, renv):
-        super(RunnerBlah, self).__init__(renv)
-        self.register_feature_class('bravo', Feature)
-        self.register_feature_class('charlie', Feature)
-        self.register_feature_class('delta', Feature)
-        self.register_feature_category_class(
-            'alpha',
-            features=['bravo', 'charlie', 'delta'],
-            defaults=['bravo', 'charlie', 'delta'],
-            mono=False)
-        self.register_feature_class('foxtrot', Feature)
-        self.register_feature_class('golf', Feature)
-        self.register_feature_class('hotel', Feature)
-        self.register_feature_category_class(
-            'echo',
-            features=['foxtrot', 'golf', 'hotel'],
-            defaults=['foxtrot', 'golf', 'hotel'],
-            mono=False)
-
-    renv = create_runtime(RunnerBlah)
-    renv.create_runner('runner')
-
-    ctrl = renv.feature_ctrl
-
-    expect = sorted(['bravo', 'charlie', 'delta'])
-    ctrl.activate_features(['alpha', 'golf'])
-    total_order, _ = ctrl.deactivate_features(['alpha'])
-    self.assertEqual(expect, sorted(total_order))
-
-    self.assertEqual(ctrl.get_active_categories_names(), ['echo'])
-    self.assertEqual(ctrl.get_active_features_names(), ['golf'])
 
   def test_category_deactivates_all_its_active_features(self):
     class RunnerBlah(Runner):
@@ -485,6 +499,33 @@ class FeatureCtrlTestDeactivationOrder(unittest.TestCase):
             'alpha', features=['bravo', 'charlie'])
         self.register_feature_class(
             'foxtrot', Feature, requires=['bravo', 'charlie'])
+        self.register_feature_category_class('echo', features=['foxtrot'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+    ctrl = renv.feature_ctrl
+
+    ctrl.activate_features(['foxtrot'])
+    total_order, _ = ctrl.deactivate_features(['foxtrot'])
+
+    killed_ftrs = sorted(['foxtrot', 'bravo', 'charlie'])
+    self.assertEqual(sorted(total_order), killed_ftrs)
+
+    self.assertFalse(ctrl.get_active_categories_names())
+    self.assertFalse(ctrl.get_active_features_names())
+
+  def test_deactivate_implicit_dependencies_category(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_class('charlie', Feature)
+        self.register_feature_category_class(
+            'alpha', features=['bravo', 'charlie'],
+            defaults=['bravo', 'charlie'])
+        self.register_feature_class(
+            'foxtrot', Feature, requires=['alpha'])
         self.register_feature_category_class('echo', features=['foxtrot'])
 
     renv = create_runtime(RunnerBlah)
@@ -557,3 +598,52 @@ class FeatureCtrlTestDeactivationOrder(unittest.TestCase):
 
     active_ftrs = sorted(['golf', 'bravo'])
     self.assertEqual(sorted(ctrl.get_active_features_names()), active_ftrs)
+
+  @unittest.expectedFailure
+  def test_deactivation_of_direct_dep(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_category_class('alpha', features=['bravo'])
+        self.register_feature_class('foxtrot', Feature, requires=['bravo'])
+        self.register_feature_category_class('echo', features=['foxtrot'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+    ctrl = renv.feature_ctrl
+
+    ctrl.activate_features(['foxtrot'])
+    ctrl.deactivate_features(['bravo'])
+
+
+class FeatureCtrlTestFtrCatLifecycle(unittest.TestCase):
+
+  def test_lifecycle(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', create_feature)
+        self.register_feature_category_class(
+            'alpha', create_category, features=['bravo'], defaults=['bravo'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+    ctrl = renv.feature_ctrl
+
+    ctrl.activate_features(['alpha'], set_up=True)
+    alpha = ctrl.get_active_category('alpha')
+    alpha.set_up.assert_called_once()
+    alpha.activate.assert_called_once()
+
+    bravo = ctrl.get_active_feature('bravo')
+    bravo.set_up.assert_called_once()
+    bravo.activate.assert_called_once()
+
+    ctrl.deactivate_features(['alpha'], tear_down=True)
+    alpha.deactivate.assert_called_once()
+    alpha.tear_down.assert_called_once()
+    bravo.deactivate.assert_called_once()
+    bravo.tear_down.assert_called_once()

@@ -271,7 +271,7 @@ class FeatureCtrl(object):
 
     return total_order, flatten_order
 
-  def get_deactivation_order(self, request, skip):
+  def get_deactivation_order(self, request, skip=None):
     """
     Derive feature deactivation order from the dependency graph.
 
