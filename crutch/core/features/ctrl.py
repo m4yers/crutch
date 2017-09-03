@@ -285,7 +285,7 @@ class FeatureCtrl(object):
     if errors:
       raise StopException(
           StopException.EFTR,
-          "Names '{}' are not features nor categories", format(errors))
+          "Names {} are not features nor categories".format(errors))
 
     flatten = self.flatten_with_active(request)
 

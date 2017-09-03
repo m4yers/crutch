@@ -116,7 +116,7 @@ class FeatureCtrlTestCircularDependencies(unittest.TestCase):
 class FeatureCtrlTestNames(unittest.TestCase):
 
   @unittest.expectedFailure
-  def test_unknown_names(self):
+  def test_activate_unknown_names(self):
     class RunnerBlah(Runner):
       def __init__(self, renv):
         super(RunnerBlah, self).__init__(renv)
@@ -127,6 +127,19 @@ class FeatureCtrlTestNames(unittest.TestCase):
     renv.create_runner('runner')
     ctrl = renv.feature_ctrl
     ctrl.activate_features(['oscar'])
+
+  @unittest.expectedFailure
+  def test_deactivate_unknown_names(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_category_class('alpha', features=['bravo'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+    ctrl = renv.feature_ctrl
+    ctrl.deactivate_features(['oscar'])
 
 
 class FeatureCtrlTestMono(unittest.TestCase):
@@ -211,6 +224,27 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
     expect = sorted(['bravo', 'charlie'])
     total_order, _ = ctrl.get_activation_order(['alpha'])
     self.assertEqual(expect, sorted(total_order))
+
+  def test_category_and_its_feature(self):
+    """
+    If features and its category is mentioned in the activation order only the
+    features stay
+    """
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_class('charlie', Feature)
+        self.register_feature_category_class(
+            'alpha', features=['bravo', 'charlie'], mono=True)
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+    ctrl = renv.feature_ctrl
+
+    total_order, _ = ctrl.get_activation_order(['alpha', 'bravo'])
+    self.assertEqual(['bravo'], total_order)
 
   def test_sibling_feature_dependency(self):
     class RunnerBlah(Runner):
@@ -318,6 +352,23 @@ class FeatureCtrlTestActivationOrder(unittest.TestCase):
     ctrl = renv.feature_ctrl
     ctrl.get_activation_order(['alpha'])
 
+  @unittest.expectedFailure
+  def test_fail_activate_mono_twice(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_class('charlie', Feature)
+        self.register_feature_category_class(
+            'alpha', features=['bravo', 'charlie'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+    ctrl = renv.feature_ctrl
+    ctrl.activate_features(['bravo'])
+    ctrl.activate_features(['charlie'])
+
 
 class FeatureCtrlTestDeactivationOrder(unittest.TestCase):
 
@@ -354,6 +405,40 @@ class FeatureCtrlTestDeactivationOrder(unittest.TestCase):
 
     self.assertFalse(ctrl.get_active_categories())
     self.assertFalse(ctrl.get_active_features())
+
+  def test_all_deactivates_active_category(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_class('charlie', Feature)
+        self.register_feature_class('delta', Feature)
+        self.register_feature_category_class(
+            'alpha',
+            features=['bravo', 'charlie', 'delta'],
+            defaults=['bravo', 'charlie', 'delta'],
+            mono=False)
+        self.register_feature_class('foxtrot', Feature)
+        self.register_feature_class('golf', Feature)
+        self.register_feature_class('hotel', Feature)
+        self.register_feature_category_class(
+            'echo',
+            features=['foxtrot', 'golf', 'hotel'],
+            defaults=['foxtrot', 'golf', 'hotel'],
+            mono=False)
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+    ctrl = renv.feature_ctrl
+
+    expect = sorted(['bravo', 'charlie', 'delta'])
+    ctrl.activate_features(['alpha', 'golf'])
+    total_order, _ = ctrl.deactivate_features(['alpha'])
+    self.assertEqual(expect, sorted(total_order))
+
+    self.assertEqual(ctrl.get_active_categories_names(), ['echo'])
+    self.assertEqual(ctrl.get_active_features_names(), ['golf'])
 
   def test_category_deactivates_all_its_active_features(self):
     class RunnerBlah(Runner):
