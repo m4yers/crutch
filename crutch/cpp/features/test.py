@@ -92,7 +92,7 @@ class FeatureCppTest(Feature):
 
   def __init__(self, renv, name):
     self.name = name
-    self.build_ftr = renv.feature_ctrl.get_singular_active_feature(Build.NAME)
+    self.build_ftr = renv.feature_ctrl.get_mono_feature(Build.NAME)
     self.jinja_ftr = renv.feature_ctrl.get_active_feature('jinja')
     super(FeatureCppTest, self).__init__(renv, FeatureMenuCppTest(
         renv,

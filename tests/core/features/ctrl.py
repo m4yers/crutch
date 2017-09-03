@@ -647,3 +647,101 @@ class FeatureCtrlTestFtrCatLifecycle(unittest.TestCase):
     alpha.tear_down.assert_called_once()
     bravo.deactivate.assert_called_once()
     bravo.tear_down.assert_called_once()
+
+class FeatureCtrlTestAPI(unittest.TestCase):
+
+  @unittest.expectedFailure
+  def test_register_category_no_features(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_category_class(
+            'alpha', create_category, features=[])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+  @unittest.expectedFailure
+  def test_register_category_same_feature(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', create_feature)
+        self.register_feature_category_class(
+            'alpha', create_category, features=['bravo'], defaults=['bravo'])
+        self.register_feature_category_class(
+            'echo', create_category, features=['bravo'], defaults=['bravo'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+
+  def test_activate_deactivate_project_features(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', Feature)
+        self.register_feature_class('charlie', Feature)
+        self.register_feature_class('delta', Feature)
+        self.register_feature_category_class(
+            'alpha',
+            features=['bravo', 'charlie', 'delta'],
+            defaults=['bravo', 'charlie'],
+            mono=False)
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+    renv.set_prop('project_features', ['bravo', 'delta'])
+
+    ctrl = renv.feature_ctrl
+
+    expect = sorted(['bravo', 'delta'])
+    ctrl.activate()
+    self.assertEqual(expect, sorted(ctrl.get_active_features_names()))
+
+    ctrl.deactivate()
+    self.assertFalse(ctrl.get_active_features_names())
+
+  def test_invoke(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', create_feature)
+        self.register_feature_category_class(
+            'alpha', create_category, features=['bravo'], defaults=['bravo'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+    renv.set_prop('project_features', ['bravo'])
+
+    ctrl = renv.feature_ctrl
+    ctrl.activate()
+
+    alpha = ctrl.get_active_category('alpha')
+    bravo = ctrl.get_active_feature('bravo')
+
+    ctrl.invoke('alpha')
+    alpha.handle.assert_called_once()
+    bravo.handle.assert_called_once()
+
+    bravo.reset_mock()
+    ctrl.invoke('bravo')
+    alpha.handle_feature.assert_called_once()
+    bravo.handle.assert_called_once()
+
+  def test_get_mono_feature(self):
+    class RunnerBlah(Runner):
+      def __init__(self, renv):
+        super(RunnerBlah, self).__init__(renv)
+        self.register_feature_class('bravo', create_feature)
+        self.register_feature_category_class(
+            'alpha', create_category, features=['bravo'], defaults=['bravo'])
+
+    renv = create_runtime(RunnerBlah)
+    renv.create_runner('runner')
+    renv.set_prop('project_features', ['bravo'])
+
+    ctrl = renv.feature_ctrl
+    ctrl.activate()
+
+    self.assertEqual(ctrl.get_active_feature('bravo'),
+        ctrl.get_mono_feature('alpha'))

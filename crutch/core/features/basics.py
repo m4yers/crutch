@@ -20,7 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import logging
+
 import crutch.core.lifecycle as Lifecycle
+
+LOGGER = logging.getLogger(__name__)
 
 
 class FeatureMenu(object):
@@ -99,7 +103,10 @@ class Feature(FeatureProto):
 
   def handle(self):
     action = self.renv.get_prop('action')
-    self.menu.handlers.get(action)()
+    if self.menu:
+      self.menu.handlers.get(action)()
+    else:
+      LOGGER.warn("No handlers map provided")
 
 
 class FeatureCategory(FeatureProto):
