@@ -34,7 +34,7 @@ from crutch.core.runtime import RuntimeEnvironment
 from crutch.core.menu import create_crutch_menu
 from crutch.core.repl.prompt import Prompt
 
-class Driver(object):
+class Driver(object): #pragma: no cover
 
   def __init__(self, runners, argv=None):
     self.runners = runners
