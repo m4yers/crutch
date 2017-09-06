@@ -38,7 +38,7 @@ from crutch.core.repl.keys import get_key_manager
 from crutch.core.repl.style import style_factory
 from crutch.core.repl.completer import CrutchCompleter
 
-class Prompt(object):
+class Prompt(object): #pragma: no cover
 
   def __init__(self, renv):
     self.renv = renv

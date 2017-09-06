@@ -26,8 +26,7 @@ from __future__ import print_function
 from pygments.token import Token
 
 
-def create_toolbar_handler(is_long_option):
-
+def create_toolbar_handler(is_long_option): #pragma: no cover
   assert callable(is_long_option)
 
   def get_toolbar_items(_):

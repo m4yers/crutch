@@ -27,7 +27,7 @@ from prompt_toolkit.key_binding.manager import KeyBindingManager
 from prompt_toolkit.keys import Keys
 
 
-def get_key_manager(set_long_options, get_long_options):
+def get_key_manager(set_long_options, get_long_options): #pragma: no cover
   assert callable(set_long_options)
   assert callable(get_long_options)
 

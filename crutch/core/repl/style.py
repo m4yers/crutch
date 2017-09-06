@@ -27,7 +27,7 @@ from pygments.util import ClassNotFound
 from prompt_toolkit.styles import default_style_extensions, PygmentsStyle
 
 
-def style_factory(name='default'):
+def style_factory(name='default'): #pragma: no cover
   try:
     style = pygments.styles.get_style_by_name(name)
   except ClassNotFound:

@@ -58,7 +58,7 @@ def create_actions_list():
 
   return tuple(set(features)), tuple(set(actions)), tuple(set(options)), tuple(set(names))
 
-def create_lexer():
+def create_lexer(): #pragma: no cover
   class CommandLexer(RegexLexer):
     name = 'Command Line'
     aliases = ['cli']
