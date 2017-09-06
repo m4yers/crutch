@@ -70,7 +70,7 @@ class Lifecycle(object): #pragma: no cover
   def add_hook_after(self, phase, hook):
     self.add_hook(phase, ORDER_AFTER, hook)
 
-  def mark(self, phase, order=ORDER_NONE, info=''):
+  def mark(self, phase, order=ORDER_NONE, info=None):
     if self.tracing:
       LOGGER.info('LIFECYCLE: {} {} {}'.format(order, phase, info))
 
@@ -83,10 +83,13 @@ class Lifecycle(object): #pragma: no cover
       return
 
     for hook in orders[order]:
-      hook(info)
+      if info:
+        hook(info)
+      else:
+        hook()
 
-  def mark_before(self, phase, info=''):
+  def mark_before(self, phase, info=None):
     self.mark(phase, ORDER_BEFORE, info)
 
-  def mark_after(self, phase, info=''):
+  def mark_after(self, phase, info=None):
     self.mark(phase, ORDER_AFTER, info)

@@ -23,8 +23,7 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
-import logging
-
+from crutch.core.log import Logging
 from crutch.core.properties import Properties
 from crutch.core.replacements import GenerativeReplacementsProvider
 from crutch.core.replacements import Replacements
@@ -57,7 +56,7 @@ class RuntimeEnvironment(object):
   Object of this class holds all necessary utility to get runner run
   """
 
-  root_logger = None
+  logger = None
   Default = None
 
   def __init__(self, runners):
@@ -72,17 +71,8 @@ class RuntimeEnvironment(object):
         'prop-to-repl-mirror', dict())
     self.repl.add_provider('runtime-env-repl', RuntimeEnvReplProvider(self))
 
-    # Init root logger
-    if not RuntimeEnvironment.root_logger:
-      logger = logging.getLogger()
-      handler = logging.StreamHandler()
-      formatter = logging.Formatter(
-          '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-      handler.setFormatter(formatter)
-      logger.addHandler(handler)
-      logger.setLevel(logging.WARNING)
-      # logger.setLevel(logging.DEBUG)
-      RuntimeEnvironment.root_logger = logger
+    if not RuntimeEnvironment.logger:
+      RuntimeEnvironment.logger = Logging(self)
 
   @staticmethod
   def get_default():
