@@ -4,7 +4,7 @@ def get_suite():
   loader = unittest.defaultTestLoader
   suite = unittest.TestSuite()
 
-  import tests.cpp.integration as integration
-  suite.addTest(loader.loadTestsFromModule(integration))
+  import tests.cpp.new as new
+  suite.addTest(loader.loadTestsFromModule(new))
 
   return suite
