@@ -26,10 +26,10 @@ from pygments.token import Keyword, Text, Name
 
 from crutch.core.runtime import RuntimeEnvironment
 
-def get_menu():
+def get_menu(): #pragma: no cover
   return RuntimeEnvironment.get_default().menu
 
-def create_actions_list():
+def create_actions_list(): #pragma: no cover
   menu = RuntimeEnvironment.get_default().menu
 
   features = menu.features.keys()
