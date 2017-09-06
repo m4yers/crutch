@@ -45,7 +45,7 @@ ORDER_NONE = 'order-none'
 ORDER_BEFORE = 'order-before'
 ORDER_AFTER = 'order-after'
 
-class Lifecycle(object):
+class Lifecycle(object): #pragma: no cover
 
   def __init__(self):
     self.hooks = dict()
